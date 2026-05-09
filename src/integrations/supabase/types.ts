@@ -35,6 +35,146 @@ export type Database = {
         }
         Relationships: []
       }
+      patient_visits: {
+        Row: {
+          chief_complaint: string | null
+          clinic_id: string
+          constitution: string | null
+          created_at: string
+          created_by: string | null
+          dosage: string | null
+          fee: number | null
+          id: string
+          miasm: string | null
+          modalities: string | null
+          next_follow_up: string | null
+          notes: string | null
+          patient_id: string
+          prescription: string | null
+          symptoms: string | null
+          updated_at: string
+          visit_date: string
+        }
+        Insert: {
+          chief_complaint?: string | null
+          clinic_id: string
+          constitution?: string | null
+          created_at?: string
+          created_by?: string | null
+          dosage?: string | null
+          fee?: number | null
+          id?: string
+          miasm?: string | null
+          modalities?: string | null
+          next_follow_up?: string | null
+          notes?: string | null
+          patient_id: string
+          prescription?: string | null
+          symptoms?: string | null
+          updated_at?: string
+          visit_date?: string
+        }
+        Update: {
+          chief_complaint?: string | null
+          clinic_id?: string
+          constitution?: string | null
+          created_at?: string
+          created_by?: string | null
+          dosage?: string | null
+          fee?: number | null
+          id?: string
+          miasm?: string | null
+          modalities?: string | null
+          next_follow_up?: string | null
+          notes?: string | null
+          patient_id?: string
+          prescription?: string | null
+          symptoms?: string | null
+          updated_at?: string
+          visit_date?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "patient_visits_clinic_id_fkey"
+            columns: ["clinic_id"]
+            isOneToOne: false
+            referencedRelation: "clinics"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "patient_visits_patient_id_fkey"
+            columns: ["patient_id"]
+            isOneToOne: false
+            referencedRelation: "patients"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      patients: {
+        Row: {
+          address: string | null
+          allergies: string | null
+          chronic_conditions: string | null
+          clinic_id: string
+          created_at: string
+          created_by: string | null
+          date_of_birth: string | null
+          email: string | null
+          full_name: string
+          gender: string | null
+          id: string
+          notes: string | null
+          occupation: string | null
+          phone: string | null
+          updated_at: string
+          user_id: string | null
+        }
+        Insert: {
+          address?: string | null
+          allergies?: string | null
+          chronic_conditions?: string | null
+          clinic_id: string
+          created_at?: string
+          created_by?: string | null
+          date_of_birth?: string | null
+          email?: string | null
+          full_name: string
+          gender?: string | null
+          id?: string
+          notes?: string | null
+          occupation?: string | null
+          phone?: string | null
+          updated_at?: string
+          user_id?: string | null
+        }
+        Update: {
+          address?: string | null
+          allergies?: string | null
+          chronic_conditions?: string | null
+          clinic_id?: string
+          created_at?: string
+          created_by?: string | null
+          date_of_birth?: string | null
+          email?: string | null
+          full_name?: string
+          gender?: string | null
+          id?: string
+          notes?: string | null
+          occupation?: string | null
+          phone?: string | null
+          updated_at?: string
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "patients_clinic_id_fkey"
+            columns: ["clinic_id"]
+            isOneToOne: false
+            referencedRelation: "clinics"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       profiles: {
         Row: {
           avatar_url: string | null
@@ -106,6 +246,7 @@ export type Database = {
         }
         Returns: boolean
       }
+      is_clinic_owner: { Args: { _clinic_id: string }; Returns: boolean }
     }
     Enums: {
       app_role: "admin" | "doctor" | "staff" | "patient"

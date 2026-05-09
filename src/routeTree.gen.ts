@@ -15,6 +15,9 @@ import { Route as AppRouteImport } from './routes/app'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as AppIndexRouteImport } from './routes/app.index'
 import { Route as AppPatientRouteImport } from './routes/app.patient'
+import { Route as AppPatientsIndexRouteImport } from './routes/app.patients.index'
+import { Route as AppPatientsNewRouteImport } from './routes/app.patients.new'
+import { Route as AppPatientsPatientIdRouteImport } from './routes/app.patients.$patientId'
 
 const SignupRoute = SignupRouteImport.update({
   id: '/signup',
@@ -46,6 +49,21 @@ const AppPatientRoute = AppPatientRouteImport.update({
   path: '/patient',
   getParentRoute: () => AppRoute,
 } as any)
+const AppPatientsIndexRoute = AppPatientsIndexRouteImport.update({
+  id: '/patients/',
+  path: '/patients/',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppPatientsNewRoute = AppPatientsNewRouteImport.update({
+  id: '/patients/new',
+  path: '/patients/new',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppPatientsPatientIdRoute = AppPatientsPatientIdRouteImport.update({
+  id: '/patients/$patientId',
+  path: '/patients/$patientId',
+  getParentRoute: () => AppRoute,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -54,6 +72,9 @@ export interface FileRoutesByFullPath {
   '/signup': typeof SignupRoute
   '/app/patient': typeof AppPatientRoute
   '/app/': typeof AppIndexRoute
+  '/app/patients/$patientId': typeof AppPatientsPatientIdRoute
+  '/app/patients/new': typeof AppPatientsNewRoute
+  '/app/patients/': typeof AppPatientsIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -61,6 +82,9 @@ export interface FileRoutesByTo {
   '/signup': typeof SignupRoute
   '/app/patient': typeof AppPatientRoute
   '/app': typeof AppIndexRoute
+  '/app/patients/$patientId': typeof AppPatientsPatientIdRoute
+  '/app/patients/new': typeof AppPatientsNewRoute
+  '/app/patients': typeof AppPatientsIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -70,12 +94,32 @@ export interface FileRoutesById {
   '/signup': typeof SignupRoute
   '/app/patient': typeof AppPatientRoute
   '/app/': typeof AppIndexRoute
+  '/app/patients/$patientId': typeof AppPatientsPatientIdRoute
+  '/app/patients/new': typeof AppPatientsNewRoute
+  '/app/patients/': typeof AppPatientsIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/app' | '/login' | '/signup' | '/app/patient' | '/app/'
+  fullPaths:
+    | '/'
+    | '/app'
+    | '/login'
+    | '/signup'
+    | '/app/patient'
+    | '/app/'
+    | '/app/patients/$patientId'
+    | '/app/patients/new'
+    | '/app/patients/'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/login' | '/signup' | '/app/patient' | '/app'
+  to:
+    | '/'
+    | '/login'
+    | '/signup'
+    | '/app/patient'
+    | '/app'
+    | '/app/patients/$patientId'
+    | '/app/patients/new'
+    | '/app/patients'
   id:
     | '__root__'
     | '/'
@@ -84,6 +128,9 @@ export interface FileRouteTypes {
     | '/signup'
     | '/app/patient'
     | '/app/'
+    | '/app/patients/$patientId'
+    | '/app/patients/new'
+    | '/app/patients/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -137,17 +184,44 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppPatientRouteImport
       parentRoute: typeof AppRoute
     }
+    '/app/patients/': {
+      id: '/app/patients/'
+      path: '/patients'
+      fullPath: '/app/patients/'
+      preLoaderRoute: typeof AppPatientsIndexRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/app/patients/new': {
+      id: '/app/patients/new'
+      path: '/patients/new'
+      fullPath: '/app/patients/new'
+      preLoaderRoute: typeof AppPatientsNewRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/app/patients/$patientId': {
+      id: '/app/patients/$patientId'
+      path: '/patients/$patientId'
+      fullPath: '/app/patients/$patientId'
+      preLoaderRoute: typeof AppPatientsPatientIdRouteImport
+      parentRoute: typeof AppRoute
+    }
   }
 }
 
 interface AppRouteChildren {
   AppPatientRoute: typeof AppPatientRoute
   AppIndexRoute: typeof AppIndexRoute
+  AppPatientsPatientIdRoute: typeof AppPatientsPatientIdRoute
+  AppPatientsNewRoute: typeof AppPatientsNewRoute
+  AppPatientsIndexRoute: typeof AppPatientsIndexRoute
 }
 
 const AppRouteChildren: AppRouteChildren = {
   AppPatientRoute: AppPatientRoute,
   AppIndexRoute: AppIndexRoute,
+  AppPatientsPatientIdRoute: AppPatientsPatientIdRoute,
+  AppPatientsNewRoute: AppPatientsNewRoute,
+  AppPatientsIndexRoute: AppPatientsIndexRoute,
 }
 
 const AppRouteWithChildren = AppRoute._addFileChildren(AppRouteChildren)
