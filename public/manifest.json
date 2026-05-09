@@ -1,0 +1,19 @@
+{
+  "name": "HomeoCare — Clinic Management",
+  "short_name": "HomeoCare",
+  "description": "Manage your homeopathy clinic: patients, appointments, inventory, and follow-ups.",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#f7fbf9",
+  "theme_color": "#3DBE9A",
+  "icons": [
+    {
+      "src": "/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}
