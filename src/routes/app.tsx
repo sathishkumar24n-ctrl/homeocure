@@ -1,4 +1,4 @@
-import { createFileRoute, Outlet, redirect, useNavigate } from "@tanstack/react-router";
+import { createFileRoute, Outlet, useNavigate } from "@tanstack/react-router";
 import { useEffect } from "react";
 import { Leaf, LogOut } from "lucide-react";
 import { useAuth } from "@/hooks/use-auth";
@@ -13,9 +13,9 @@ function AppLayout() {
 
   useEffect(() => {
     if (!loading && !user) {
-      throw redirect({ to: "/login" });
+      navigate({ to: "/login" });
     }
-  }, [loading, user]);
+  }, [loading, user, navigate]);
 
   if (loading) {
     return (
