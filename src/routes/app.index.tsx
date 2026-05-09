@@ -1,21 +1,18 @@
-import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useEffect } from "react";
-import { CalendarCheck, HeartPulse, Package, Users } from "lucide-react";
+import { useQuery } from "@tanstack/react-query";
+import { ArrowRight, CalendarCheck, HeartPulse, Package, Users } from "lucide-react";
 import { useAuth } from "@/hooks/use-auth";
+import { useClinic } from "@/hooks/use-clinic";
+import { supabase } from "@/integrations/supabase/client";
 
 export const Route = createFileRoute("/app/")({
   component: DoctorDashboard,
 });
 
-const tiles = [
-  { icon: Users, label: "Patients", value: "—", hint: "Coming next" },
-  { icon: CalendarCheck, label: "Today's appointments", value: "—", hint: "Coming next" },
-  { icon: HeartPulse, label: "Pending follow-ups", value: "—", hint: "Coming next" },
-  { icon: Package, label: "Low-stock remedies", value: "—", hint: "Coming next" },
-];
-
 function DoctorDashboard() {
   const { user, role, loading } = useAuth();
+  const { data: clinic } = useClinic();
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -23,6 +20,65 @@ function DoctorDashboard() {
       navigate({ to: "/app/patient" });
     }
   }, [loading, role, navigate]);
+
+  const patientCount = useQuery({
+    queryKey: ["patient-count", clinic?.id],
+    enabled: !!clinic?.id,
+    queryFn: async () => {
+      const { count, error } = await supabase
+        .from("patients")
+        .select("id", { count: "exact", head: true })
+        .eq("clinic_id", clinic!.id);
+      if (error) throw error;
+      return count ?? 0;
+    },
+  });
+
+  const followUpCount = useQuery({
+    queryKey: ["followup-count", clinic?.id],
+    enabled: !!clinic?.id,
+    queryFn: async () => {
+      const today = new Date().toISOString().slice(0, 10);
+      const { count, error } = await supabase
+        .from("patient_visits")
+        .select("id", { count: "exact", head: true })
+        .eq("clinic_id", clinic!.id)
+        .gte("next_follow_up", today);
+      if (error) throw error;
+      return count ?? 0;
+    },
+  });
+
+  const tiles = [
+    {
+      icon: Users,
+      label: "Patients",
+      value: patientCount.data ?? "—",
+      to: "/app/patients" as const,
+      hint: "Manage your patient database",
+    },
+    {
+      icon: CalendarCheck,
+      label: "Today's appointments",
+      value: "—",
+      to: null,
+      hint: "Coming in step 4",
+    },
+    {
+      icon: HeartPulse,
+      label: "Upcoming follow-ups",
+      value: followUpCount.data ?? "—",
+      to: null,
+      hint: "Scheduled patient revisits",
+    },
+    {
+      icon: Package,
+      label: "Low-stock remedies",
+      value: "—",
+      to: null,
+      hint: "Coming in step 5",
+    },
+  ];
 
   return (
     <div className="mx-auto max-w-5xl px-4 py-8">
@@ -32,23 +88,41 @@ function DoctorDashboard() {
           Dr. {user?.user_metadata?.full_name ?? "Doctor"}
         </h1>
         <p className="mt-2 max-w-md text-sm text-muted-foreground">
-          Your clinic dashboard is taking shape. Patient management arrives in step 3.
+          {clinic?.name ?? "Your clinic"} — here's an overview of today.
         </p>
       </div>
 
       <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        {tiles.map((t) => (
-          <div key={t.label} className="rounded-2xl border border-border/60 bg-card p-5 shadow-card">
-            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-secondary text-secondary-foreground">
-              <t.icon className="h-5 w-5" />
+        {tiles.map((t) => {
+          const inner = (
+            <>
+              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-secondary text-secondary-foreground">
+                <t.icon className="h-5 w-5" />
+              </div>
+              <p className="mt-3 text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                {t.label}
+              </p>
+              <p className="mt-1 text-2xl font-bold text-foreground">{t.value}</p>
+              <p className="text-xs text-muted-foreground">{t.hint}</p>
+            </>
+          );
+          return t.to ? (
+            <Link
+              key={t.label}
+              to={t.to}
+              className="group rounded-2xl border border-border/60 bg-card p-5 shadow-card transition-smooth hover:-translate-y-0.5 hover:shadow-elevated"
+            >
+              {inner}
+              <p className="mt-2 inline-flex items-center gap-1 text-xs font-semibold text-primary">
+                Open <ArrowRight className="h-3 w-3 transition-transform group-hover:translate-x-0.5" />
+              </p>
+            </Link>
+          ) : (
+            <div key={t.label} className="rounded-2xl border border-border/60 bg-card p-5 shadow-card">
+              {inner}
             </div>
-            <p className="mt-3 text-xs font-medium uppercase tracking-wide text-muted-foreground">
-              {t.label}
-            </p>
-            <p className="mt-1 text-2xl font-bold text-foreground">{t.value}</p>
-            <p className="text-xs text-muted-foreground">{t.hint}</p>
-          </div>
-        ))}
+          );
+        })}
       </div>
     </div>
   );
