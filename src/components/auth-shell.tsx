@@ -66,11 +66,15 @@ export function Field({
   type = "text",
   placeholder,
   autoComplete,
+  value,
+  onChange,
 }: {
   label: string;
   type?: string;
   placeholder?: string;
   autoComplete?: string;
+  value?: string;
+  onChange?: (value: string) => void;
 }) {
   return (
     <label className="block">
@@ -79,17 +83,21 @@ export function Field({
         type={type}
         placeholder={placeholder}
         autoComplete={autoComplete}
+        value={value}
+        onChange={(e) => onChange?.(e.target.value)}
+        required
         className="mt-1.5 block w-full rounded-xl border border-input bg-background px-4 py-3 text-sm text-foreground placeholder:text-muted-foreground/70 focus:border-ring focus:outline-none focus:ring-2 focus:ring-ring/30"
       />
     </label>
   );
 }
 
-export function PrimaryButton({ children }: { children: ReactNode }) {
+export function PrimaryButton({ children, disabled }: { children: ReactNode; disabled?: boolean }) {
   return (
     <button
       type="submit"
-      className="w-full rounded-xl bg-gradient-primary px-4 py-3 text-sm font-semibold text-primary-foreground shadow-soft transition-smooth hover:shadow-elevated active:scale-[0.99]"
+      disabled={disabled}
+      className="w-full rounded-xl bg-gradient-primary px-4 py-3 text-sm font-semibold text-primary-foreground shadow-soft transition-smooth hover:shadow-elevated active:scale-[0.99] disabled:opacity-60"
     >
       {children}
     </button>
