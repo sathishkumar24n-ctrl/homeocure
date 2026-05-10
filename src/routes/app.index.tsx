@@ -90,9 +90,9 @@ function DoctorDashboard() {
     {
       icon: Package,
       label: "Low-stock remedies",
-      value: "—",
-      to: null,
-      hint: "Coming in step 5",
+      value: lowStockCount.data ?? "—",
+      to: "/app/remedies" as const,
+      hint: "Track inventory and stock",
     },
   ];
 
