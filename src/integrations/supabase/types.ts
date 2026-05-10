@@ -247,6 +247,60 @@ export type Database = {
         }
         Relationships: []
       }
+      remedies: {
+        Row: {
+          batch_number: string | null
+          clinic_id: string
+          created_at: string
+          created_by: string | null
+          expiry_date: string | null
+          form: string | null
+          id: string
+          low_stock_threshold: number
+          name: string
+          notes: string | null
+          potency: string | null
+          quantity: number
+          supplier: string | null
+          unit: string
+          updated_at: string
+        }
+        Insert: {
+          batch_number?: string | null
+          clinic_id: string
+          created_at?: string
+          created_by?: string | null
+          expiry_date?: string | null
+          form?: string | null
+          id?: string
+          low_stock_threshold?: number
+          name: string
+          notes?: string | null
+          potency?: string | null
+          quantity?: number
+          supplier?: string | null
+          unit?: string
+          updated_at?: string
+        }
+        Update: {
+          batch_number?: string | null
+          clinic_id?: string
+          created_at?: string
+          created_by?: string | null
+          expiry_date?: string | null
+          form?: string | null
+          id?: string
+          low_stock_threshold?: number
+          name?: string
+          notes?: string | null
+          potency?: string | null
+          quantity?: number
+          supplier?: string | null
+          unit?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       user_roles: {
         Row: {
           clinic_id: string | null

@@ -35,6 +35,21 @@ function DoctorDashboard() {
     },
   });
 
+  const lowStockCount = useQuery({
+    queryKey: ["low-stock-count", clinic?.id],
+    enabled: !!clinic?.id,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("remedies")
+        .select("quantity, low_stock_threshold")
+        .eq("clinic_id", clinic!.id);
+      if (error) throw error;
+      return (data ?? []).filter(
+        (r) => Number(r.quantity) <= Number(r.low_stock_threshold),
+      ).length;
+    },
+  });
+
   const followUpCount = useQuery({
     queryKey: ["followup-count", clinic?.id],
     enabled: !!clinic?.id,
@@ -75,9 +90,9 @@ function DoctorDashboard() {
     {
       icon: Package,
       label: "Low-stock remedies",
-      value: "—",
-      to: null,
-      hint: "Coming in step 5",
+      value: lowStockCount.data ?? "—",
+      to: "/app/remedies" as const,
+      hint: "Track inventory and stock",
     },
   ];
 
