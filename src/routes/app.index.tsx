@@ -5,6 +5,7 @@ import { ArrowRight, CalendarCheck, HeartPulse, Package, Users } from "lucide-re
 import { useAuth } from "@/hooks/use-auth";
 import { useClinic } from "@/hooks/use-clinic";
 import { supabase } from "@/integrations/supabase/client";
+import { FollowUpRemindersCard } from "@/components/follow-up-reminders-card";
 
 export const Route = createFileRoute("/app/")({
   component: DoctorDashboard,
@@ -124,6 +125,8 @@ function DoctorDashboard() {
           );
         })}
       </div>
+
+      <FollowUpRemindersCard clinicId={clinic?.id} />
     </div>
   );
 }
