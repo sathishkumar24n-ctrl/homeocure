@@ -35,6 +35,51 @@ export type Database = {
         }
         Relationships: []
       }
+      follow_up_reminders: {
+        Row: {
+          channel: string
+          clinic_id: string
+          created_at: string
+          error: string | null
+          follow_up_date: string
+          id: string
+          patient_id: string
+          provider_message_id: string | null
+          sent_at: string | null
+          sent_to: string | null
+          status: string
+          visit_id: string
+        }
+        Insert: {
+          channel?: string
+          clinic_id: string
+          created_at?: string
+          error?: string | null
+          follow_up_date: string
+          id?: string
+          patient_id: string
+          provider_message_id?: string | null
+          sent_at?: string | null
+          sent_to?: string | null
+          status?: string
+          visit_id: string
+        }
+        Update: {
+          channel?: string
+          clinic_id?: string
+          created_at?: string
+          error?: string | null
+          follow_up_date?: string
+          id?: string
+          patient_id?: string
+          provider_message_id?: string | null
+          sent_at?: string | null
+          sent_to?: string | null
+          status?: string
+          visit_id?: string
+        }
+        Relationships: []
+      }
       patient_visits: {
         Row: {
           chief_complaint: string | null
