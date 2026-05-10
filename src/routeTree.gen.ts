@@ -18,6 +18,7 @@ import { Route as AppPatientRouteImport } from './routes/app.patient'
 import { Route as AppPatientsIndexRouteImport } from './routes/app.patients.index'
 import { Route as AppPatientsNewRouteImport } from './routes/app.patients.new'
 import { Route as AppPatientsPatientIdRouteImport } from './routes/app.patients.$patientId'
+import { Route as ApiPublicHooksFollowUpRemindersRouteImport } from './routes/api/public/hooks/follow-up-reminders'
 
 const SignupRoute = SignupRouteImport.update({
   id: '/signup',
@@ -64,6 +65,12 @@ const AppPatientsPatientIdRoute = AppPatientsPatientIdRouteImport.update({
   path: '/patients/$patientId',
   getParentRoute: () => AppRoute,
 } as any)
+const ApiPublicHooksFollowUpRemindersRoute =
+  ApiPublicHooksFollowUpRemindersRouteImport.update({
+    id: '/api/public/hooks/follow-up-reminders',
+    path: '/api/public/hooks/follow-up-reminders',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -75,6 +82,7 @@ export interface FileRoutesByFullPath {
   '/app/patients/$patientId': typeof AppPatientsPatientIdRoute
   '/app/patients/new': typeof AppPatientsNewRoute
   '/app/patients/': typeof AppPatientsIndexRoute
+  '/api/public/hooks/follow-up-reminders': typeof ApiPublicHooksFollowUpRemindersRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -85,6 +93,7 @@ export interface FileRoutesByTo {
   '/app/patients/$patientId': typeof AppPatientsPatientIdRoute
   '/app/patients/new': typeof AppPatientsNewRoute
   '/app/patients': typeof AppPatientsIndexRoute
+  '/api/public/hooks/follow-up-reminders': typeof ApiPublicHooksFollowUpRemindersRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -97,6 +106,7 @@ export interface FileRoutesById {
   '/app/patients/$patientId': typeof AppPatientsPatientIdRoute
   '/app/patients/new': typeof AppPatientsNewRoute
   '/app/patients/': typeof AppPatientsIndexRoute
+  '/api/public/hooks/follow-up-reminders': typeof ApiPublicHooksFollowUpRemindersRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -110,6 +120,7 @@ export interface FileRouteTypes {
     | '/app/patients/$patientId'
     | '/app/patients/new'
     | '/app/patients/'
+    | '/api/public/hooks/follow-up-reminders'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -120,6 +131,7 @@ export interface FileRouteTypes {
     | '/app/patients/$patientId'
     | '/app/patients/new'
     | '/app/patients'
+    | '/api/public/hooks/follow-up-reminders'
   id:
     | '__root__'
     | '/'
@@ -131,6 +143,7 @@ export interface FileRouteTypes {
     | '/app/patients/$patientId'
     | '/app/patients/new'
     | '/app/patients/'
+    | '/api/public/hooks/follow-up-reminders'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -138,6 +151,7 @@ export interface RootRouteChildren {
   AppRoute: typeof AppRouteWithChildren
   LoginRoute: typeof LoginRoute
   SignupRoute: typeof SignupRoute
+  ApiPublicHooksFollowUpRemindersRoute: typeof ApiPublicHooksFollowUpRemindersRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -205,6 +219,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppPatientsPatientIdRouteImport
       parentRoute: typeof AppRoute
     }
+    '/api/public/hooks/follow-up-reminders': {
+      id: '/api/public/hooks/follow-up-reminders'
+      path: '/api/public/hooks/follow-up-reminders'
+      fullPath: '/api/public/hooks/follow-up-reminders'
+      preLoaderRoute: typeof ApiPublicHooksFollowUpRemindersRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
@@ -231,7 +252,18 @@ const rootRouteChildren: RootRouteChildren = {
   AppRoute: AppRouteWithChildren,
   LoginRoute: LoginRoute,
   SignupRoute: SignupRoute,
+  ApiPublicHooksFollowUpRemindersRoute: ApiPublicHooksFollowUpRemindersRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
+
+import type { getRouter } from './router.tsx'
+import type { startInstance } from './start.ts'
+declare module '@tanstack/react-start' {
+  interface Register {
+    ssr: true
+    router: Awaited<ReturnType<typeof getRouter>>
+    config: Awaited<ReturnType<typeof startInstance.getOptions>>
+  }
+}
