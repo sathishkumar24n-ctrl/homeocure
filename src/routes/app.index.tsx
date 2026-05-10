@@ -125,6 +125,8 @@ function DoctorDashboard() {
           );
         })}
       </div>
+
+      <FollowUpRemindersCard clinicId={clinic?.id} />
     </div>
   );
 }
