@@ -35,6 +35,21 @@ function AppLayout() {
       <header className="sticky top-0 z-30 border-b border-border/60 bg-card/80 backdrop-blur">
         <div className="mx-auto flex h-16 max-w-5xl items-center justify-between px-4">
           <div className="flex items-center gap-2">
+            {!isDashboard && (
+              <button
+                onClick={() => {
+                  if (window.history.length > 1) {
+                    router.history.back();
+                  } else {
+                    navigate({ to: "/app" });
+                  }
+                }}
+                aria-label="Go back"
+                className="mr-1 inline-flex h-9 w-9 items-center justify-center rounded-full border border-border bg-card text-foreground transition-smooth hover:bg-muted"
+              >
+                <ArrowLeft className="h-4 w-4" />
+              </button>
+            )}
             <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-primary shadow-soft">
               <Leaf className="h-5 w-5 text-primary-foreground" />
             </div>
