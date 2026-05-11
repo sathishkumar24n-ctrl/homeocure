@@ -1,7 +1,9 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useServerFn } from "@tanstack/react-start";
 import { Loader2, Send, MessageCircle, CheckCircle2, AlertCircle } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
+import { sendFollowUpRemindersNow } from "@/lib/follow-up-reminders.functions";
 
 export function FollowUpRemindersCard({ clinicId }: { clinicId?: string }) {
   const qc = useQueryClient();
@@ -21,16 +23,10 @@ export function FollowUpRemindersCard({ clinicId }: { clinicId?: string }) {
     },
   });
 
+  const sendNowFn = useServerFn(sendFollowUpRemindersNow);
   const sendNow = useMutation({
     mutationFn: async () => {
-      const res = await fetch("/api/public/hooks/follow-up-reminders", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ daysAhead: 1 }),
-      });
-      const json = await res.json();
-      if (!res.ok) throw new Error(json?.error ?? "Failed to send");
-      return json as { sent: number; skipped: number; failed: number; considered: number };
+      return await sendNowFn({ data: { daysAhead: 1 } });
     },
     onSuccess: (r) => {
       toast.success(
