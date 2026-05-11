@@ -1,6 +1,6 @@
-import { createFileRoute, Outlet, useNavigate } from "@tanstack/react-router";
+import { createFileRoute, Outlet, useNavigate, useRouter, useRouterState } from "@tanstack/react-router";
 import { useEffect } from "react";
-import { Leaf, LogOut } from "lucide-react";
+import { ArrowLeft, Leaf, LogOut } from "lucide-react";
 import { useAuth } from "@/hooks/use-auth";
 
 export const Route = createFileRoute("/app")({
@@ -10,6 +10,9 @@ export const Route = createFileRoute("/app")({
 function AppLayout() {
   const { user, role, loading, signOut } = useAuth();
   const navigate = useNavigate();
+  const router = useRouter();
+  const pathname = useRouterState({ select: (s) => s.location.pathname });
+  const isDashboard = pathname === "/app" || pathname === "/app/";
 
   useEffect(() => {
     if (!loading && !user) {
@@ -32,6 +35,21 @@ function AppLayout() {
       <header className="sticky top-0 z-30 border-b border-border/60 bg-card/80 backdrop-blur">
         <div className="mx-auto flex h-16 max-w-5xl items-center justify-between px-4">
           <div className="flex items-center gap-2">
+            {!isDashboard && (
+              <button
+                onClick={() => {
+                  if (window.history.length > 1) {
+                    router.history.back();
+                  } else {
+                    navigate({ to: "/app" });
+                  }
+                }}
+                aria-label="Go back"
+                className="mr-1 inline-flex h-9 w-9 items-center justify-center rounded-full border border-border bg-card text-foreground transition-smooth hover:bg-muted"
+              >
+                <ArrowLeft className="h-4 w-4" />
+              </button>
+            )}
             <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-primary shadow-soft">
               <Leaf className="h-5 w-5 text-primary-foreground" />
             </div>
