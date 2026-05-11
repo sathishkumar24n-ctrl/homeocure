@@ -1,6 +1,6 @@
-import { createFileRoute, Outlet, useNavigate } from "@tanstack/react-router";
+import { createFileRoute, Outlet, useNavigate, useRouter, useRouterState } from "@tanstack/react-router";
 import { useEffect } from "react";
-import { Leaf, LogOut } from "lucide-react";
+import { ArrowLeft, Leaf, LogOut } from "lucide-react";
 import { useAuth } from "@/hooks/use-auth";
 
 export const Route = createFileRoute("/app")({
