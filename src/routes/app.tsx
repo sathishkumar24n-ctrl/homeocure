@@ -10,6 +10,9 @@ export const Route = createFileRoute("/app")({
 function AppLayout() {
   const { user, role, loading, signOut } = useAuth();
   const navigate = useNavigate();
+  const router = useRouter();
+  const pathname = useRouterState({ select: (s) => s.location.pathname });
+  const isDashboard = pathname === "/app" || pathname === "/app/";
 
   useEffect(() => {
     if (!loading && !user) {
