@@ -1,7 +1,9 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useServerFn } from "@tanstack/react-start";
 import { Loader2, Send, MessageCircle, CheckCircle2, AlertCircle } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
+import { sendFollowUpRemindersNow } from "@/lib/follow-up-reminders.functions";
 
 export function FollowUpRemindersCard({ clinicId }: { clinicId?: string }) {
   const qc = useQueryClient();
