@@ -1,7 +1,7 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useMemo, useState } from "react";
-import { CalendarCheck, CalendarPlus, Clock, Pencil, Trash2, User } from "lucide-react";
+import { CalendarCheck, CalendarClock, CalendarPlus, Clock, Pencil, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { useClinic } from "@/hooks/use-clinic";
@@ -17,6 +17,9 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
+import { Calendar } from "@/components/ui/calendar";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { cn } from "@/lib/utils";
 import {
   Select,
   SelectContent,
@@ -204,6 +207,22 @@ function AppointmentsPage() {
     onError: (e: any) => toast.error(e.message ?? "Failed"),
   });
 
+  const reschedule = useMutation({
+    mutationFn: async ({ id, scheduled_at }: { id: string; scheduled_at: string }) => {
+      const { error } = await supabase
+        .from("appointments")
+        .update({ scheduled_at: new Date(scheduled_at).toISOString() })
+        .eq("id", id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      toast.success("Appointment rescheduled");
+      qc.invalidateQueries({ queryKey: ["appointments", clinic?.id] });
+      qc.invalidateQueries({ queryKey: ["today-appointments-count", clinic?.id] });
+    },
+    onError: (e: any) => toast.error(e.message ?? "Failed"),
+  });
+
   const remove = useMutation({
     mutationFn: async (id: string) => {
       const { error } = await supabase.from("appointments").delete().eq("id", id);
@@ -333,6 +352,10 @@ function AppointmentsPage() {
                       ))}
                     </SelectContent>
                   </Select>
+                  <ReschedulePopover
+                    scheduledAt={a.scheduled_at}
+                    onChange={(scheduled_at) => reschedule.mutate({ id: a.id, scheduled_at })}
+                  />
                   <button
                     onClick={() =>
                       setEditing({ ...a, scheduled_at: toLocalInput(new Date(a.scheduled_at)) })
@@ -467,4 +490,77 @@ function AppointmentsPage() {
 function nullify(v: string | null | undefined) {
   const t = (v ?? "").trim();
   return t.length ? t : null;
+}
+
+function ReschedulePopover({
+  scheduledAt,
+  onChange,
+}: {
+  scheduledAt: string;
+  onChange: (scheduledAtLocal: string) => void;
+}) {
+  const initial = useMemo(() => new Date(scheduledAt), [scheduledAt]);
+  const [open, setOpen] = useState(false);
+  const [date, setDate] = useState<Date | undefined>(initial);
+  const [time, setTime] = useState<string>(
+    `${String(initial.getHours()).padStart(2, "0")}:${String(initial.getMinutes()).padStart(2, "0")}`,
+  );
+
+  const apply = () => {
+    if (!date) return;
+    const [hh, mm] = time.split(":").map(Number);
+    const d = new Date(date);
+    d.setHours(hh ?? 0, mm ?? 0, 0, 0);
+    onChange(toLocalInput(d));
+    setOpen(false);
+  };
+
+  return (
+    <Popover
+      open={open}
+      onOpenChange={(o) => {
+        setOpen(o);
+        if (o) {
+          setDate(new Date(scheduledAt));
+          const d = new Date(scheduledAt);
+          setTime(
+            `${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`,
+          );
+        }
+      }}
+    >
+      <PopoverTrigger asChild>
+        <button
+          className="flex h-8 w-8 items-center justify-center rounded-full text-muted-foreground transition-smooth hover:bg-muted hover:text-foreground"
+          aria-label="Reschedule"
+        >
+          <CalendarClock className="h-3.5 w-3.5" />
+        </button>
+      </PopoverTrigger>
+      <PopoverContent className="w-auto p-0" align="end">
+        <div className="border-b border-border px-3 py-2">
+          <p className="text-xs font-semibold text-foreground">Reschedule</p>
+          <p className="text-[11px] text-muted-foreground">Pick a new date and time</p>
+        </div>
+        <Calendar
+          mode="single"
+          selected={date}
+          onSelect={setDate}
+          initialFocus
+          className={cn("p-3 pointer-events-auto")}
+        />
+        <div className="flex items-center gap-2 border-t border-border p-3">
+          <Input
+            type="time"
+            value={time}
+            onChange={(e) => setTime(e.target.value)}
+            className="h-9"
+          />
+          <Button size="sm" onClick={apply} disabled={!date}>
+            Save
+          </Button>
+        </div>
+      </PopoverContent>
+    </Popover>
+  );
 }
