@@ -124,11 +124,22 @@ function AppointmentsPage() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("appointments")
-        .select("*, patient:patients(id, full_name, phone)")
+        .select("*")
         .eq("clinic_id", clinic!.id)
         .order("scheduled_at", { ascending: true });
       if (error) throw error;
-      return data as AppointmentRow[];
+      const rows = (data ?? []) as Appointment[];
+      const ids = Array.from(new Set(rows.map((r) => r.patient_id)));
+      let patientMap = new Map<string, { id: string; full_name: string; phone: string | null }>();
+      if (ids.length) {
+        const { data: pats, error: pErr } = await supabase
+          .from("patients")
+          .select("id, full_name, phone")
+          .in("id", ids);
+        if (pErr) throw pErr;
+        patientMap = new Map((pats ?? []).map((p) => [p.id, p]));
+      }
+      return rows.map((r) => ({ ...r, patient: patientMap.get(r.patient_id) ?? null })) as AppointmentRow[];
     },
   });
 
