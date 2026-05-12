@@ -491,3 +491,76 @@ function nullify(v: string | null | undefined) {
   const t = (v ?? "").trim();
   return t.length ? t : null;
 }
+
+function ReschedulePopover({
+  scheduledAt,
+  onChange,
+}: {
+  scheduledAt: string;
+  onChange: (scheduledAtLocal: string) => void;
+}) {
+  const initial = useMemo(() => new Date(scheduledAt), [scheduledAt]);
+  const [open, setOpen] = useState(false);
+  const [date, setDate] = useState<Date | undefined>(initial);
+  const [time, setTime] = useState<string>(
+    `${String(initial.getHours()).padStart(2, "0")}:${String(initial.getMinutes()).padStart(2, "0")}`,
+  );
+
+  const apply = () => {
+    if (!date) return;
+    const [hh, mm] = time.split(":").map(Number);
+    const d = new Date(date);
+    d.setHours(hh ?? 0, mm ?? 0, 0, 0);
+    onChange(toLocalInput(d));
+    setOpen(false);
+  };
+
+  return (
+    <Popover
+      open={open}
+      onOpenChange={(o) => {
+        setOpen(o);
+        if (o) {
+          setDate(new Date(scheduledAt));
+          const d = new Date(scheduledAt);
+          setTime(
+            `${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`,
+          );
+        }
+      }}
+    >
+      <PopoverTrigger asChild>
+        <button
+          className="flex h-8 w-8 items-center justify-center rounded-full text-muted-foreground transition-smooth hover:bg-muted hover:text-foreground"
+          aria-label="Reschedule"
+        >
+          <CalendarClock className="h-3.5 w-3.5" />
+        </button>
+      </PopoverTrigger>
+      <PopoverContent className="w-auto p-0" align="end">
+        <div className="border-b border-border px-3 py-2">
+          <p className="text-xs font-semibold text-foreground">Reschedule</p>
+          <p className="text-[11px] text-muted-foreground">Pick a new date and time</p>
+        </div>
+        <Calendar
+          mode="single"
+          selected={date}
+          onSelect={setDate}
+          initialFocus
+          className={cn("p-3 pointer-events-auto")}
+        />
+        <div className="flex items-center gap-2 border-t border-border p-3">
+          <Input
+            type="time"
+            value={time}
+            onChange={(e) => setTime(e.target.value)}
+            className="h-9"
+          />
+          <Button size="sm" onClick={apply} disabled={!date}>
+            Save
+          </Button>
+        </div>
+      </PopoverContent>
+    </Popover>
+  );
+}
