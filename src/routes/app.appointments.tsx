@@ -352,6 +352,10 @@ function AppointmentsPage() {
                       ))}
                     </SelectContent>
                   </Select>
+                  <ReschedulePopover
+                    scheduledAt={a.scheduled_at}
+                    onChange={(scheduled_at) => reschedule.mutate({ id: a.id, scheduled_at })}
+                  />
                   <button
                     onClick={() =>
                       setEditing({ ...a, scheduled_at: toLocalInput(new Date(a.scheduled_at)) })
