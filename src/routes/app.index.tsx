@@ -95,9 +95,9 @@ function DoctorDashboard() {
     {
       icon: CalendarCheck,
       label: "Today's appointments",
-      value: "—",
-      to: null,
-      hint: "Coming in step 4",
+      value: todayAppointmentsCount.data ?? "—",
+      to: "/app/appointments" as const,
+      hint: "Schedule and manage today",
     },
     {
       icon: HeartPulse,
