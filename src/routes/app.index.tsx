@@ -35,6 +35,25 @@ function DoctorDashboard() {
     },
   });
 
+  const todayAppointmentsCount = useQuery({
+    queryKey: ["today-appointments-count", clinic?.id],
+    enabled: !!clinic?.id,
+    queryFn: async () => {
+      const start = new Date();
+      start.setHours(0, 0, 0, 0);
+      const end = new Date(start);
+      end.setDate(end.getDate() + 1);
+      const { count, error } = await supabase
+        .from("appointments")
+        .select("id", { count: "exact", head: true })
+        .eq("clinic_id", clinic!.id)
+        .gte("scheduled_at", start.toISOString())
+        .lt("scheduled_at", end.toISOString());
+      if (error) throw error;
+      return count ?? 0;
+    },
+  });
+
   const lowStockCount = useQuery({
     queryKey: ["low-stock-count", clinic?.id],
     enabled: !!clinic?.id,
@@ -76,9 +95,9 @@ function DoctorDashboard() {
     {
       icon: CalendarCheck,
       label: "Today's appointments",
-      value: "—",
-      to: null,
-      hint: "Coming in step 4",
+      value: todayAppointmentsCount.data ?? "—",
+      to: "/app/appointments" as const,
+      hint: "Schedule and manage today",
     },
     {
       icon: HeartPulse,
