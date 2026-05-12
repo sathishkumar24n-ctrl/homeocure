@@ -207,6 +207,22 @@ function AppointmentsPage() {
     onError: (e: any) => toast.error(e.message ?? "Failed"),
   });
 
+  const reschedule = useMutation({
+    mutationFn: async ({ id, scheduled_at }: { id: string; scheduled_at: string }) => {
+      const { error } = await supabase
+        .from("appointments")
+        .update({ scheduled_at: new Date(scheduled_at).toISOString() })
+        .eq("id", id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      toast.success("Appointment rescheduled");
+      qc.invalidateQueries({ queryKey: ["appointments", clinic?.id] });
+      qc.invalidateQueries({ queryKey: ["today-appointments-count", clinic?.id] });
+    },
+    onError: (e: any) => toast.error(e.message ?? "Failed"),
+  });
+
   const remove = useMutation({
     mutationFn: async (id: string) => {
       const { error } = await supabase.from("appointments").delete().eq("id", id);
