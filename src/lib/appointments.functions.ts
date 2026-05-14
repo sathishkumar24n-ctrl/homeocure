@@ -17,24 +17,37 @@ export const sendAppointmentWhatsApp = createServerFn({ method: "POST" })
     const { supabase } = context;
     const { data: appt, error } = await supabase
       .from("appointments")
-      .select(
-        "id, scheduled_at, clinic_id, patient_id, patients!inner(full_name, phone), clinics!inner(name)",
-      )
+      .select("id, scheduled_at, clinic_id, patient_id")
       .eq("id", data.appointmentId)
       .maybeSingle();
     if (error || !appt) {
       throw new Error("Appointment not found or access denied");
     }
-    const phone = (appt as any).patients?.phone as string | undefined;
+    const [{ data: patient }, { data: clinic }] = await Promise.all([
+      supabase
+        .from("patients")
+        .select("full_name, phone")
+        .eq("id", appt.patient_id)
+        .maybeSingle(),
+      supabase
+        .from("clinics")
+        .select("name")
+        .eq("id", appt.clinic_id)
+        .maybeSingle(),
+    ]);
+    if (!patient) {
+      throw new Error("Patient record not found");
+    }
+    const phone = patient.phone;
     if (!phone || phone.trim().length === 0) {
       return { ok: false, reason: "no_phone" as const };
     }
     try {
       const res = await sendAppointmentConfirmation({
         to: phone,
-        patientName: (appt as any).patients.full_name,
+        patientName: patient.full_name,
         scheduledAt: appt.scheduled_at as unknown as string,
-        clinicName: (appt as any).clinics.name,
+        clinicName: clinic?.name ?? "your clinic",
         kind: data.kind,
       });
       return { ok: true, messageId: res.messageId };
