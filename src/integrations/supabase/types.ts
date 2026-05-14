@@ -387,6 +387,10 @@ export type Database = {
         }
         Returns: boolean
       }
+      is_appointment_patient: {
+        Args: { _patient_id: string }
+        Returns: boolean
+      }
       is_clinic_owner: { Args: { _clinic_id: string }; Returns: boolean }
     }
     Enums: {
