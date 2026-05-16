@@ -16,6 +16,7 @@ import { Route as IndexRouteImport } from './routes/index'
 import { Route as AppIndexRouteImport } from './routes/app.index'
 import { Route as AppRemediesRouteImport } from './routes/app.remedies'
 import { Route as AppPatientRouteImport } from './routes/app.patient'
+import { Route as AppFollowUpsRouteImport } from './routes/app.follow-ups'
 import { Route as AppAppointmentsRouteImport } from './routes/app.appointments'
 import { Route as AppPatientsIndexRouteImport } from './routes/app.patients.index'
 import { Route as AppPatientsNewRouteImport } from './routes/app.patients.new'
@@ -57,6 +58,11 @@ const AppPatientRoute = AppPatientRouteImport.update({
   path: '/patient',
   getParentRoute: () => AppRoute,
 } as any)
+const AppFollowUpsRoute = AppFollowUpsRouteImport.update({
+  id: '/follow-ups',
+  path: '/follow-ups',
+  getParentRoute: () => AppRoute,
+} as any)
 const AppAppointmentsRoute = AppAppointmentsRouteImport.update({
   id: '/appointments',
   path: '/appointments',
@@ -90,6 +96,7 @@ export interface FileRoutesByFullPath {
   '/login': typeof LoginRoute
   '/signup': typeof SignupRoute
   '/app/appointments': typeof AppAppointmentsRoute
+  '/app/follow-ups': typeof AppFollowUpsRoute
   '/app/patient': typeof AppPatientRoute
   '/app/remedies': typeof AppRemediesRoute
   '/app/': typeof AppIndexRoute
@@ -103,6 +110,7 @@ export interface FileRoutesByTo {
   '/login': typeof LoginRoute
   '/signup': typeof SignupRoute
   '/app/appointments': typeof AppAppointmentsRoute
+  '/app/follow-ups': typeof AppFollowUpsRoute
   '/app/patient': typeof AppPatientRoute
   '/app/remedies': typeof AppRemediesRoute
   '/app': typeof AppIndexRoute
@@ -118,6 +126,7 @@ export interface FileRoutesById {
   '/login': typeof LoginRoute
   '/signup': typeof SignupRoute
   '/app/appointments': typeof AppAppointmentsRoute
+  '/app/follow-ups': typeof AppFollowUpsRoute
   '/app/patient': typeof AppPatientRoute
   '/app/remedies': typeof AppRemediesRoute
   '/app/': typeof AppIndexRoute
@@ -134,6 +143,7 @@ export interface FileRouteTypes {
     | '/login'
     | '/signup'
     | '/app/appointments'
+    | '/app/follow-ups'
     | '/app/patient'
     | '/app/remedies'
     | '/app/'
@@ -147,6 +157,7 @@ export interface FileRouteTypes {
     | '/login'
     | '/signup'
     | '/app/appointments'
+    | '/app/follow-ups'
     | '/app/patient'
     | '/app/remedies'
     | '/app'
@@ -161,6 +172,7 @@ export interface FileRouteTypes {
     | '/login'
     | '/signup'
     | '/app/appointments'
+    | '/app/follow-ups'
     | '/app/patient'
     | '/app/remedies'
     | '/app/'
@@ -229,6 +241,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppPatientRouteImport
       parentRoute: typeof AppRoute
     }
+    '/app/follow-ups': {
+      id: '/app/follow-ups'
+      path: '/follow-ups'
+      fullPath: '/app/follow-ups'
+      preLoaderRoute: typeof AppFollowUpsRouteImport
+      parentRoute: typeof AppRoute
+    }
     '/app/appointments': {
       id: '/app/appointments'
       path: '/appointments'
@@ -269,6 +288,7 @@ declare module '@tanstack/react-router' {
 
 interface AppRouteChildren {
   AppAppointmentsRoute: typeof AppAppointmentsRoute
+  AppFollowUpsRoute: typeof AppFollowUpsRoute
   AppPatientRoute: typeof AppPatientRoute
   AppRemediesRoute: typeof AppRemediesRoute
   AppIndexRoute: typeof AppIndexRoute
@@ -279,6 +299,7 @@ interface AppRouteChildren {
 
 const AppRouteChildren: AppRouteChildren = {
   AppAppointmentsRoute: AppAppointmentsRoute,
+  AppFollowUpsRoute: AppFollowUpsRoute,
   AppPatientRoute: AppPatientRoute,
   AppRemediesRoute: AppRemediesRoute,
   AppIndexRoute: AppIndexRoute,
