@@ -14,7 +14,10 @@ export const sendAppointmentWhatsApp = createServerFn({ method: "POST" })
     }).parse,
   )
   .handler(async ({ data, context }) => {
-    const { supabase } = context;
+    const { supabase, userId } = context;
+    // RLS already restricts SELECT to clinic owner or linked patient, but
+    // re-verify explicitly so we never send WhatsApp on behalf of someone
+    // who shouldn't have access to this appointment.
     const { data: appt, error } = await supabase
       .from("appointments")
       .select("id, scheduled_at, clinic_id, patient_id")
@@ -26,17 +29,27 @@ export const sendAppointmentWhatsApp = createServerFn({ method: "POST" })
     const [{ data: patient }, { data: clinic }] = await Promise.all([
       supabase
         .from("patients")
-        .select("full_name, phone")
+        .select("full_name, phone, user_id, clinic_id")
         .eq("id", appt.patient_id)
         .maybeSingle(),
       supabase
         .from("clinics")
-        .select("name")
+        .select("name, owner_id")
         .eq("id", appt.clinic_id)
         .maybeSingle(),
     ]);
     if (!patient) {
       throw new Error("Patient record not found");
+    }
+    // Defense in depth: caller must own the clinic OR be the linked patient,
+    // AND the patient must actually belong to this clinic.
+    const isClinicOwner = clinic?.owner_id === userId;
+    const isLinkedPatient = patient.user_id === userId;
+    if (!isClinicOwner && !isLinkedPatient) {
+      throw new Error("Access denied");
+    }
+    if (patient.clinic_id !== appt.clinic_id) {
+      throw new Error("Appointment does not belong to this clinic");
     }
     const phone = patient.phone;
     if (!phone || phone.trim().length === 0) {
