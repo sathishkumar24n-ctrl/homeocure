@@ -141,7 +141,7 @@ function DoctorDashboard() {
               <p className="text-xs text-muted-foreground">{t.hint}</p>
             </>
           );
-          return t.to ? (
+          return (
             <Link
               key={t.label}
               to={t.to}
@@ -152,10 +152,6 @@ function DoctorDashboard() {
                 Open <ArrowRight className="h-3 w-3 transition-transform group-hover:translate-x-0.5" />
               </p>
             </Link>
-          ) : (
-            <div key={t.label} className="rounded-2xl border border-border/60 bg-card p-5 shadow-card">
-              {inner}
-            </div>
           );
         })}
       </div>
