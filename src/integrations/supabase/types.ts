@@ -122,6 +122,27 @@ export type Database = {
         }
         Relationships: []
       }
+      patient_link_attempts: {
+        Row: {
+          attempted_at: string
+          id: string
+          success: boolean
+          user_id: string
+        }
+        Insert: {
+          attempted_at?: string
+          id?: string
+          success?: boolean
+          user_id: string
+        }
+        Update: {
+          attempted_at?: string
+          id?: string
+          success?: boolean
+          user_id?: string
+        }
+        Relationships: []
+      }
       patient_visits: {
         Row: {
           chief_complaint: string | null
