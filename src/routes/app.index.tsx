@@ -103,8 +103,8 @@ function DoctorDashboard() {
       icon: HeartPulse,
       label: "Upcoming follow-ups",
       value: followUpCount.data ?? "—",
-      to: null,
-      hint: "Scheduled patient revisits",
+      to: "/app/follow-ups" as const,
+      hint: "Smart reminders & retention",
     },
     {
       icon: Package,
