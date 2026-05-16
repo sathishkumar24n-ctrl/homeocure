@@ -1,7 +1,7 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
-import { runReminders } from "./follow-up-reminders.server";
+import { runReminders, sendReminderForVisit } from "./follow-up-reminders.server";
 
 // Authenticated "Send now" used by the dashboard. Scoped strictly to the
 // caller's clinic by validating ownership before invoking the runner.
