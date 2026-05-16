@@ -148,3 +148,76 @@ function normalizePhone(p: string) {
   const trimmed = p.trim().replace(/[\s\-()]/g, "");
   return trimmed.startsWith("+") ? trimmed.slice(1) : trimmed;
 }
+
+// Send a single reminder for a specific visit. Inserts a follow_up_reminders
+// row, calls WhatsApp, updates status. Caller is responsible for verifying
+// the visit belongs to the caller's clinic before invoking this.
+export async function sendReminderForVisit(opts: {
+  visitId: string;
+  clinicId: string;
+  patientId: string;
+  followUpDate: string;
+}) {
+  const token = process.env.WHATSAPP_ACCESS_TOKEN;
+  const phoneNumberId = process.env.WHATSAPP_PHONE_NUMBER_ID;
+  const templateName = process.env.WHATSAPP_TEMPLATE_NAME;
+  if (!token || !phoneNumberId || !templateName) {
+    throw new Error("WhatsApp credentials are not configured");
+  }
+
+  const { data: patient, error: pErr } = await supabaseAdmin
+    .from("patients")
+    .select("full_name, phone")
+    .eq("id", opts.patientId)
+    .maybeSingle();
+  if (pErr || !patient) throw new Error("Patient not found");
+  if (!patient.phone || patient.phone.trim().length === 0) {
+    return { ok: false, reason: "no_phone" as const };
+  }
+
+  const phone = normalizePhone(patient.phone);
+
+  const { data: reserved, error: reserveErr } = await supabaseAdmin
+    .from("follow_up_reminders")
+    .insert({
+      visit_id: opts.visitId,
+      patient_id: opts.patientId,
+      clinic_id: opts.clinicId,
+      follow_up_date: opts.followUpDate,
+      channel: "whatsapp",
+      status: "pending",
+      sent_to: phone,
+    })
+    .select("id")
+    .single();
+  if (reserveErr) throw new Error(reserveErr.message);
+
+  try {
+    const res = await sendWhatsAppTemplate({
+      token,
+      phoneNumberId,
+      templateName,
+      to: phone,
+      patientName: patient.full_name,
+      followUpDate: opts.followUpDate,
+    });
+    await supabaseAdmin
+      .from("follow_up_reminders")
+      .update({
+        status: "sent",
+        sent_at: new Date().toISOString(),
+        provider_message_id: res.messageId,
+      })
+      .eq("id", reserved.id);
+    return { ok: true as const, messageId: res.messageId };
+  } catch (err: any) {
+    await supabaseAdmin
+      .from("follow_up_reminders")
+      .update({
+        status: "failed",
+        error: String(err?.message ?? err).slice(0, 500),
+      })
+      .eq("id", reserved.id);
+    return { ok: false as const, reason: "send_failed" as const, error: String(err?.message ?? err) };
+  }
+}
