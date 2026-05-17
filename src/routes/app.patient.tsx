@@ -93,6 +93,22 @@ function PatientHome() {
     },
   });
 
+  const visits = useQuery({
+    queryKey: ["my-visits", patientIds.join(",")],
+    enabled: patientIds.length > 0,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("patient_visits")
+        .select(
+          "id, patient_id, clinic_id, visit_date, chief_complaint, prescription, dosage, next_follow_up, notes",
+        )
+        .in("patient_id", patientIds)
+        .order("visit_date", { ascending: false });
+      if (error) throw error;
+      return data ?? [];
+    },
+  });
+
   const sendWhatsApp = useServerFn(sendAppointmentWhatsApp);
   const [bookOpen, setBookOpen] = useState(false);
   const [rescheduleFor, setRescheduleFor] = useState<Appointment | null>(null);
