@@ -199,6 +199,122 @@ function PatientHome() {
         )}
       </Section>
 
+      {(() => {
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        const followUps = (visits.data ?? [])
+          .filter((v) => v.next_follow_up && new Date(v.next_follow_up as string) >= today)
+          .sort(
+            (a, b) =>
+              new Date(a.next_follow_up as string).getTime() -
+              new Date(b.next_follow_up as string).getTime(),
+          );
+        const prescribed = (visits.data ?? []).filter((v) => v.prescription);
+
+        return (
+          <>
+            <Section title="Follow-up reminders">
+              {followUps.length === 0 ? (
+                <Empty label="No upcoming follow-ups" />
+              ) : (
+                followUps.map((v) => {
+                  const due = new Date(v.next_follow_up as string);
+                  const days = Math.ceil(
+                    (due.getTime() - today.getTime()) / (1000 * 60 * 60 * 24),
+                  );
+                  const clinicName = records.data!.find(
+                    (r) => r.id === v.patient_id,
+                  )?.clinic_name;
+                  return (
+                    <div
+                      key={`fu-${v.id}`}
+                      className="flex items-start justify-between gap-3 rounded-2xl border border-border/60 bg-card p-4 shadow-card"
+                    >
+                      <div className="flex items-start gap-3 min-w-0">
+                        <div className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-secondary text-secondary-foreground">
+                          <Bell className="h-4 w-4" />
+                        </div>
+                        <div className="min-w-0">
+                          <p className="font-semibold text-foreground">
+                            {due.toLocaleDateString(undefined, {
+                              weekday: "short",
+                              month: "short",
+                              day: "numeric",
+                            })}
+                          </p>
+                          <p className="truncate text-xs text-muted-foreground">
+                            {clinicName} ·{" "}
+                            {days === 0
+                              ? "Today"
+                              : days === 1
+                                ? "Tomorrow"
+                                : `In ${days} days`}
+                          </p>
+                          {v.chief_complaint && (
+                            <p className="mt-1 truncate text-sm text-foreground/80">
+                              {v.chief_complaint}
+                            </p>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })
+              )}
+            </Section>
+
+            <Section title="Prescriptions">
+              {prescribed.length === 0 ? (
+                <Empty label="No prescriptions yet" />
+              ) : (
+                prescribed.map((v) => {
+                  const clinicName = records.data!.find(
+                    (r) => r.id === v.patient_id,
+                  )?.clinic_name;
+                  return (
+                    <div
+                      key={`rx-${v.id}`}
+                      className="rounded-2xl border border-border/60 bg-card p-4 shadow-card"
+                    >
+                      <div className="flex items-start gap-3">
+                        <div className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary">
+                          <Pill className="h-4 w-4" />
+                        </div>
+                        <div className="min-w-0 flex-1">
+                          <div className="flex flex-wrap items-baseline gap-x-2">
+                            <p className="font-semibold text-foreground">
+                              {v.prescription}
+                            </p>
+                            <p className="text-xs text-muted-foreground">
+                              {new Date(v.visit_date as string).toLocaleDateString(
+                                undefined,
+                                { month: "short", day: "numeric", year: "numeric" },
+                              )}
+                            </p>
+                          </div>
+                          {v.dosage && (
+                            <p className="mt-0.5 text-sm text-foreground/80">
+                              {v.dosage}
+                            </p>
+                          )}
+                          <p className="mt-1 text-xs text-muted-foreground">
+                            {clinicName}
+                            {v.chief_complaint ? ` · ${v.chief_complaint}` : ""}
+                          </p>
+                          {v.notes && (
+                            <p className="mt-1 text-sm text-foreground/70">{v.notes}</p>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })
+              )}
+            </Section>
+          </>
+        );
+      })()}
+
       {bookOpen && (
         <BookDialog
           records={records.data}
