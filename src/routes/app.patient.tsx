@@ -9,6 +9,8 @@ import {
   Loader2,
   MessageCircle,
   Phone,
+  Pill,
+  Bell,
   Search,
   Trash2,
   X,
