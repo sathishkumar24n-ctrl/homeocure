@@ -145,8 +145,20 @@ async function sendWhatsAppTemplate(opts: {
 }
 
 function normalizePhone(p: string) {
-  const trimmed = p.trim().replace(/[\s\-()]/g, "");
-  return trimmed.startsWith("+") ? trimmed.slice(1) : trimmed;
+  let s = p.trim().replace(/[\s\-()]/g, "");
+  if (s.startsWith("+")) return s.slice(1);
+  // Strip a leading "00" international prefix
+  if (s.startsWith("00")) return s.slice(2);
+  // Strip a leading domestic "0" (common in India: "09940114575")
+  if (s.startsWith("0")) s = s.slice(1);
+  const defaultCc = (process.env.WHATSAPP_DEFAULT_COUNTRY_CODE ?? "91").replace(
+    /\D/g,
+    "",
+  );
+  // If the number looks like a bare local 10-digit number (India/most),
+  // prefix the default country code so WhatsApp Cloud accepts it.
+  if (/^\d{10}$/.test(s)) return `${defaultCc}${s}`;
+  return s;
 }
 
 // Send a single reminder for a specific visit. Inserts a follow_up_reminders
