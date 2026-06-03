@@ -158,24 +158,52 @@ function FollowUpCenter() {
     };
   }, [reminders.data, buckets]);
 
-  const sendBatchFn = useServerFn(sendFollowUpRemindersNow);
-  const sendBatch = useMutation({
-    mutationFn: () => sendBatchFn({ data: { daysAhead: 1 } }),
-    onSuccess: (r) => {
-      toast.success(
-        `Reminders: ${r.sent} sent, ${r.skipped} already done, ${r.failed} failed`,
-      );
-      qc.invalidateQueries({ queryKey: ["follow-up-reminders-all", clinic?.id] });
-    },
-    onError: (e: Error) => toast.error(e.message),
-  });
-
   const sendOneFn = useServerFn(sendVisitFollowUpReminder);
   const sendOne = useMutation({
     mutationFn: (visitId: string) => sendOneFn({ data: { visitId } }),
     onSuccess: (r: any) => {
       if (r?.ok) toast.success("WhatsApp reminder sent");
       else toast.error(r?.error || r?.reason || "Failed to send");
+      qc.invalidateQueries({ queryKey: ["follow-up-reminders-all", clinic?.id] });
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
+  const sendBatch = useMutation({
+    mutationFn: async () => {
+      const target =
+        tab === "today"
+          ? buckets.dueToday
+          : tab === "upcoming"
+            ? buckets.upcoming
+            : tab === "missed"
+              ? buckets.missed
+              : [];
+      const eligible = target.filter(
+        (v) => v.patients?.phone && !sentVisitIds.has(v.id),
+      );
+      let sent = 0;
+      const skipped = target.length - eligible.length;
+      let failed = 0;
+      for (const v of eligible) {
+        try {
+          const r: any = await sendOneFn({ data: { visitId: v.id } });
+          if (r?.ok) sent++;
+          else failed++;
+        } catch {
+          failed++;
+        }
+      }
+      return { sent, skipped, failed, total: target.length };
+    },
+    onSuccess: (r) => {
+      if (r.total === 0) {
+        toast.info("No patients in this tab to remind");
+      } else {
+        toast.success(
+          `Reminders: ${r.sent} sent, ${r.skipped} already done, ${r.failed} failed`,
+        );
+      }
       qc.invalidateQueries({ queryKey: ["follow-up-reminders-all", clinic?.id] });
     },
     onError: (e: Error) => toast.error(e.message),
