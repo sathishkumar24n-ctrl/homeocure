@@ -239,7 +239,7 @@ function FollowUpCenter() {
           ) : (
             <Send className="h-3.5 w-3.5" />
           )}
-          Send tomorrow's batch
+          Send {tab === "sent" ? "batch" : tab === "missed" ? "to missed" : tab === "upcoming" ? "to upcoming" : "to today's"}
         </button>
       </div>
 
