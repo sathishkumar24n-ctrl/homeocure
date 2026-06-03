@@ -17,10 +17,7 @@ import { toast } from "sonner";
 import { useAuth } from "@/hooks/use-auth";
 import { useClinic } from "@/hooks/use-clinic";
 import { supabase } from "@/integrations/supabase/client";
-import {
-  sendFollowUpRemindersNow,
-  sendVisitFollowUpReminder,
-} from "@/lib/follow-up-reminders.functions";
+import { sendVisitFollowUpReminder } from "@/lib/follow-up-reminders.functions";
 import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/app/follow-ups")({
