@@ -1,6 +1,8 @@
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
 
 const GRAPH_VERSION = "v21.0";
+const META_INSPECTION_TIMEOUT_MS = 4000;
+const META_SEND_TIMEOUT_MS = 12000;
 
 type WhatsAppOperation = "follow_up_reminder" | "appointment_confirmation";
 
@@ -80,14 +82,14 @@ export async function sendWhatsAppTemplate(opts: {
   let fetchError: unknown;
 
   try {
-    const res = await fetch(url, {
+    const res = await fetchWithTimeout(url, {
       method: "POST",
       headers: {
         Authorization: `Bearer ${config.token}`,
         "Content-Type": "application/json",
       },
       body: JSON.stringify(payload),
-    });
+    }, META_SEND_TIMEOUT_MS);
     responseStatus = res.status;
     responseBody = await parseResponseBody(res);
     providerMessageId = getProviderMessageId(responseBody);
@@ -148,7 +150,7 @@ export async function inspectWhatsAppToken() {
 
   try {
     const url = `https://graph.facebook.com/debug_token?input_token=${encodeURIComponent(token)}&access_token=${encodeURIComponent(token)}`;
-    const res = await fetch(url);
+    const res = await fetchWithTimeout(url, undefined, META_INSPECTION_TIMEOUT_MS);
     const body = await parseResponseBody(res);
     const data = typeof body === "object" && body && "data" in body ? (body as any).data : null;
     const error = getMetaError(body);
@@ -189,9 +191,9 @@ export async function inspectWhatsAppPhoneNumber() {
   try {
     const fields = "id,display_phone_number,verified_name,quality_rating,whatsapp_business_account";
     const url = `https://graph.facebook.com/${GRAPH_VERSION}/${config.phoneNumberId}?fields=${encodeURIComponent(fields)}`;
-    const res = await fetch(url, {
+    const res = await fetchWithTimeout(url, {
       headers: { Authorization: `Bearer ${config.token}` },
-    });
+    }, META_INSPECTION_TIMEOUT_MS);
     const body = await parseResponseBody(res);
     const error = getMetaError(body);
     return {
@@ -245,6 +247,20 @@ async function parseResponseBody(res: Response) {
     return JSON.parse(text);
   } catch {
     return { raw: text.slice(0, 4000) };
+  }
+}
+
+async function fetchWithTimeout(
+  input: RequestInfo | URL,
+  init: RequestInit | undefined,
+  timeoutMs: number,
+) {
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), timeoutMs);
+  try {
+    return await fetch(input, { ...init, signal: controller.signal });
+  } finally {
+    clearTimeout(timeout);
   }
 }
 
