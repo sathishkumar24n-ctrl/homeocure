@@ -1,6 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { runReminders } from "@/lib/follow-up-reminders.server";
-import { supabaseAdmin } from "@/integrations/supabase/client.server";
 
 // Cron-only endpoint. Authenticated via an `x-hook-secret` shared secret
 // stored in Supabase Vault. The cron job reads the same secret from Vault
@@ -13,6 +12,7 @@ async function loadHookSecret(): Promise<string | null> {
   if (cachedSecret && Date.now() - cachedSecret.at < SECRET_TTL_MS) {
     return cachedSecret.value;
   }
+  const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
   const { data, error } = await (supabaseAdmin as any)
     .schema("vault")
     .from("decrypted_secrets")

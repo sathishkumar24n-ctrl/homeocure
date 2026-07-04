@@ -61,6 +61,7 @@ export const sendAppointmentWhatsApp = createServerFn({ method: "POST" })
         patientName: patient.full_name,
         scheduledAt: appt.scheduled_at as unknown as string,
         clinicName: clinic?.name ?? "your clinic",
+        clinicId: appt.clinic_id,
         kind: data.kind,
       });
       return { ok: true, messageId: res.messageId };
