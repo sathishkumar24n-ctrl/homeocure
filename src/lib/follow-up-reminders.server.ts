@@ -4,9 +4,9 @@ export async function runReminders(opts: {
   daysAhead: number;
   clinicId?: string;
 }) {
-  const token = process.env.WHATSAPP_ACCESS_TOKEN;
-  const phoneNumberId = process.env.WHATSAPP_PHONE_NUMBER_ID;
-  const templateName = process.env.WHATSAPP_TEMPLATE_NAME;
+  const token = normalizeSecret(process.env.WHATSAPP_ACCESS_TOKEN);
+  const phoneNumberId = normalizeSecret(process.env.WHATSAPP_PHONE_NUMBER_ID);
+  const templateName = normalizeSecret(process.env.WHATSAPP_TEMPLATE_NAME);
   if (!token || !phoneNumberId || !templateName) {
     throw new Error("WhatsApp credentials are not configured");
   }
@@ -41,21 +41,23 @@ export async function runReminders(opts: {
     const phone = normalizePhone((v as any).patients.phone);
     const patientName = (v as any).patients.full_name as string;
 
-    const { data: reserved, error: reserveErr } = await supabaseAdmin
-      .from("follow_up_reminders")
-      .insert({
-        visit_id: v.id,
-        patient_id: v.patient_id,
-        clinic_id: v.clinic_id,
-        follow_up_date: targetDate,
-        channel: "whatsapp",
-        status: "pending",
-        sent_to: phone,
-      })
-      .select("id")
-      .single();
+    const reserved = await reserveReminder({
+      visitId: v.id,
+      patientId: v.patient_id,
+      clinicId: v.clinic_id,
+      followUpDate: targetDate,
+      sentTo: phone,
+    }).catch((err) => {
+      console.error("[follow-up-reminders] reserve failed", err);
+      return null;
+    });
 
-    if (reserveErr) {
+    if (!reserved) {
+      skipped++;
+      continue;
+    }
+
+    if (reserved.alreadySent) {
       skipped++;
       continue;
     }
@@ -161,6 +163,72 @@ function normalizePhone(p: string) {
   return s;
 }
 
+function normalizeSecret(value: string | undefined) {
+  if (!value) return undefined;
+  let cleaned = value.trim();
+  if (
+    (cleaned.startsWith('"') && cleaned.endsWith('"')) ||
+    (cleaned.startsWith("'") && cleaned.endsWith("'"))
+  ) {
+    cleaned = cleaned.slice(1, -1).trim();
+  }
+  return cleaned.replace(/\s+/g, "");
+}
+
+async function reserveReminder(opts: {
+  visitId: string;
+  patientId: string;
+  clinicId: string;
+  followUpDate: string;
+  sentTo: string;
+}) {
+  const { data: existing, error: existingErr } = await supabaseAdmin
+    .from("follow_up_reminders")
+    .select("id, status")
+    .eq("visit_id", opts.visitId)
+    .eq("follow_up_date", opts.followUpDate)
+    .eq("channel", "whatsapp")
+    .maybeSingle();
+
+  if (existingErr) throw existingErr;
+  if (existing?.status === "sent") return { id: existing.id, alreadySent: true };
+
+  if (!existing) {
+    const { data: inserted, error: insertErr } = await supabaseAdmin
+      .from("follow_up_reminders")
+      .insert({
+        visit_id: opts.visitId,
+        patient_id: opts.patientId,
+        clinic_id: opts.clinicId,
+        follow_up_date: opts.followUpDate,
+        channel: "whatsapp",
+        status: "pending",
+        sent_to: opts.sentTo,
+      })
+      .select("id")
+      .single();
+
+    if (insertErr) throw insertErr;
+    return { id: inserted.id, alreadySent: false };
+  }
+
+  const { data: retry, error: retryErr } = await supabaseAdmin
+    .from("follow_up_reminders")
+    .update({
+      status: "pending",
+      error: null,
+      sent_to: opts.sentTo,
+      sent_at: null,
+      provider_message_id: null,
+    })
+    .eq("id", existing.id)
+    .select("id")
+    .single();
+
+  if (retryErr) throw retryErr;
+  return { id: retry.id, alreadySent: false };
+}
+
 // Send a single reminder for a specific visit. Inserts a follow_up_reminders
 // row, calls WhatsApp, updates status. Caller is responsible for verifying
 // the visit belongs to the caller's clinic before invoking this.
@@ -170,9 +238,9 @@ export async function sendReminderForVisit(opts: {
   patientId: string;
   followUpDate: string;
 }) {
-  const token = process.env.WHATSAPP_ACCESS_TOKEN;
-  const phoneNumberId = process.env.WHATSAPP_PHONE_NUMBER_ID;
-  const templateName = process.env.WHATSAPP_TEMPLATE_NAME;
+  const token = normalizeSecret(process.env.WHATSAPP_ACCESS_TOKEN);
+  const phoneNumberId = normalizeSecret(process.env.WHATSAPP_PHONE_NUMBER_ID);
+  const templateName = normalizeSecret(process.env.WHATSAPP_TEMPLATE_NAME);
   if (!token || !phoneNumberId || !templateName) {
     throw new Error("WhatsApp credentials are not configured");
   }
@@ -189,20 +257,14 @@ export async function sendReminderForVisit(opts: {
 
   const phone = normalizePhone(patient.phone);
 
-  const { data: reserved, error: reserveErr } = await supabaseAdmin
-    .from("follow_up_reminders")
-    .insert({
-      visit_id: opts.visitId,
-      patient_id: opts.patientId,
-      clinic_id: opts.clinicId,
-      follow_up_date: opts.followUpDate,
-      channel: "whatsapp",
-      status: "pending",
-      sent_to: phone,
-    })
-    .select("id")
-    .single();
-  if (reserveErr) throw new Error(reserveErr.message);
+  const reserved = await reserveReminder({
+    visitId: opts.visitId,
+    patientId: opts.patientId,
+    clinicId: opts.clinicId,
+    followUpDate: opts.followUpDate,
+    sentTo: phone,
+  });
+  if (reserved.alreadySent) return { ok: true as const, alreadySent: true };
 
   try {
     const res = await sendWhatsAppTemplate({
