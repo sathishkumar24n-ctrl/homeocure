@@ -182,29 +182,6 @@ async function reserveReminder(opts: {
   followUpDate: string;
   sentTo: string;
 }) {
-  const insertPayload = {
-    visit_id: opts.visitId,
-    patient_id: opts.patientId,
-    clinic_id: opts.clinicId,
-    follow_up_date: opts.followUpDate,
-    channel: "whatsapp",
-    status: "pending",
-    sent_to: opts.sentTo,
-  };
-
-  const { data: inserted, error: insertErr } = await supabaseAdmin
-    .from("follow_up_reminders")
-    .insert(insertPayload)
-    .select("id, status")
-    .single();
-
-  if (!insertErr) return { id: inserted.id, alreadySent: false };
-
-  const duplicate =
-    insertErr.code === "23505" ||
-    insertErr.message.toLowerCase().includes("duplicate key");
-  if (!duplicate) throw insertErr;
-
   const { data: existing, error: existingErr } = await supabaseAdmin
     .from("follow_up_reminders")
     .select("id, status")
@@ -213,8 +190,27 @@ async function reserveReminder(opts: {
     .eq("channel", "whatsapp")
     .maybeSingle();
 
-  if (existingErr || !existing) throw existingErr ?? insertErr;
-  if (existing.status === "sent") return { id: existing.id, alreadySent: true };
+  if (existingErr) throw existingErr;
+  if (existing?.status === "sent") return { id: existing.id, alreadySent: true };
+
+  if (!existing) {
+    const { data: inserted, error: insertErr } = await supabaseAdmin
+      .from("follow_up_reminders")
+      .insert({
+        visit_id: opts.visitId,
+        patient_id: opts.patientId,
+        clinic_id: opts.clinicId,
+        follow_up_date: opts.followUpDate,
+        channel: "whatsapp",
+        status: "pending",
+        sent_to: opts.sentTo,
+      })
+      .select("id")
+      .single();
+
+    if (insertErr) throw insertErr;
+    return { id: inserted.id, alreadySent: false };
+  }
 
   const { data: retry, error: retryErr } = await supabaseAdmin
     .from("follow_up_reminders")
