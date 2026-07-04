@@ -19,7 +19,17 @@ export const getWhatsAppStatus = createServerFn({ method: "GET" })
     const whatsapp = await import("./whatsapp.server");
     const config = whatsapp.getWhatsAppConfigStatus();
 
-    const [tokenInspection, phoneInspection, scheduler, failedCount, lastSent, lastError, lastFollowUp, lastAppointment] =
+    const [
+      tokenInspection,
+      phoneInspection,
+      scheduler,
+      failedCount,
+      lastSent,
+      lastError,
+      latestReminderFailure,
+      lastFollowUp,
+      lastAppointment,
+    ] =
       await Promise.all([
         whatsapp.inspectWhatsAppToken(),
         whatsapp.inspectWhatsAppPhoneNumber(),
@@ -27,9 +37,12 @@ export const getWhatsAppStatus = createServerFn({ method: "GET" })
         countFailedReminders(supabaseAdmin, clinic.id),
         latestWhatsAppLog(supabaseAdmin, clinic.id, { success: true }),
         latestWhatsAppLog(supabaseAdmin, clinic.id, { success: false }),
+        latestFailedReminder(supabaseAdmin, clinic.id),
         latestWhatsAppLog(supabaseAdmin, clinic.id, { operation: "follow_up_reminder" }),
         latestWhatsAppLog(supabaseAdmin, clinic.id, { operation: "appointment_confirmation" }),
       ]);
+
+    const effectiveLastError = lastError ?? mapReminderFailure(latestReminderFailure);
 
     const diagnostics = buildDiagnostics({
       config,
@@ -50,7 +63,7 @@ export const getWhatsAppStatus = createServerFn({ method: "GET" })
       },
       messages: {
         lastSent,
-        lastError,
+        lastError: effectiveLastError,
         lastFollowUp,
         lastAppointment,
       },
@@ -78,6 +91,42 @@ async function latestWhatsAppLog(
   const { data, error } = await query.maybeSingle();
   if (error) return null;
   return data ?? null;
+}
+
+async function latestFailedReminder(supabaseAdmin: any, clinicId: string) {
+  const { data, error } = await (supabaseAdmin as any)
+    .from("follow_up_reminders")
+    .select("id, created_at, sent_to, error")
+    .eq("clinic_id", clinicId)
+    .eq("status", "failed")
+    .order("created_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  if (error) return null;
+  return data ?? null;
+}
+
+function mapReminderFailure(row: any) {
+  if (!row) return null;
+  return {
+    id: row.id,
+    created_at: row.created_at,
+    operation: "follow_up_reminder",
+    recipient: row.sent_to,
+    response_status: parseMetaStatus(row.error),
+    response_body: null,
+    provider_message_id: null,
+    success: false,
+    meta_error_message: row.error,
+    meta_error_code: null,
+    meta_error_type: null,
+    duration_ms: null,
+  };
+}
+
+function parseMetaStatus(error: string | null) {
+  const match = error?.match(/WhatsApp\s+(\d+)/i);
+  return match ? Number(match[1]) : null;
 }
 
 async function countFailedReminders(supabaseAdmin: any, clinicId: string) {
