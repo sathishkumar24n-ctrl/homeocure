@@ -1,13 +1,12 @@
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
+import { getWhatsAppConfig, normalizePhone, sendWhatsAppTemplate } from "./whatsapp.server";
 
 export async function runReminders(opts: {
   daysAhead: number;
   clinicId?: string;
 }) {
-  const token = normalizeSecret(process.env.WHATSAPP_ACCESS_TOKEN);
-  const phoneNumberId = normalizeSecret(process.env.WHATSAPP_PHONE_NUMBER_ID);
-  const templateName = normalizeSecret(process.env.WHATSAPP_TEMPLATE_NAME);
-  if (!token || !phoneNumberId || !templateName) {
+  const config = getWhatsAppConfig();
+  if (!config.token || !config.phoneNumberId || !config.templateName) {
     throw new Error("WhatsApp credentials are not configured");
   }
 
@@ -64,12 +63,10 @@ export async function runReminders(opts: {
 
     try {
       const res = await sendWhatsAppTemplate({
-        token,
-        phoneNumberId,
-        templateName,
+        operation: "follow_up_reminder",
+        clinicId: v.clinic_id,
         to: phone,
-        patientName,
-        followUpDate: targetDate,
+        parameters: [patientName, targetDate],
       });
       await supabaseAdmin
         .from("follow_up_reminders")
@@ -101,78 +98,6 @@ export async function runReminders(opts: {
     skipped,
     failed,
   };
-}
-
-async function sendWhatsAppTemplate(opts: {
-  token: string;
-  phoneNumberId: string;
-  templateName: string;
-  to: string;
-  patientName: string;
-  followUpDate: string;
-}) {
-  const url = `https://graph.facebook.com/v21.0/${opts.phoneNumberId}/messages`;
-  const payload = {
-    messaging_product: "whatsapp",
-    to: opts.to,
-    type: "template",
-    template: {
-      name: opts.templateName,
-      language: { code: "en" },
-      components: [
-        {
-          type: "body",
-          parameters: [
-            { type: "text", text: opts.patientName },
-            { type: "text", text: opts.followUpDate },
-          ],
-        },
-      ],
-    },
-  };
-  const res = await fetch(url, {
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${opts.token}`,
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify(payload),
-  });
-  const data: any = await res.json().catch(() => ({}));
-  if (!res.ok) {
-    const detail = data?.error?.message ?? JSON.stringify(data);
-    throw new Error(`WhatsApp ${res.status}: ${detail}`);
-  }
-  return { messageId: data?.messages?.[0]?.id as string | undefined };
-}
-
-function normalizePhone(p: string) {
-  let s = p.trim().replace(/[\s\-()]/g, "");
-  if (s.startsWith("+")) return s.slice(1);
-  // Strip a leading "00" international prefix
-  if (s.startsWith("00")) return s.slice(2);
-  // Strip a leading domestic "0" (common in India: "09940114575")
-  if (s.startsWith("0")) s = s.slice(1);
-  const defaultCc = (process.env.WHATSAPP_DEFAULT_COUNTRY_CODE ?? "91").replace(
-    /\D/g,
-    "",
-  );
-  // If the number looks like a bare local 10-digit number (India/most),
-  // prefix the default country code so WhatsApp Cloud accepts it.
-  if (/^\d{10}$/.test(s)) return `${defaultCc}${s}`;
-  return s;
-}
-
-function normalizeSecret(value: string | undefined) {
-  if (!value) return undefined;
-  let cleaned = value.trim();
-  if (
-    (cleaned.startsWith('"') && cleaned.endsWith('"')) ||
-    (cleaned.startsWith("'") && cleaned.endsWith("'"))
-  ) {
-    cleaned = cleaned.slice(1, -1).trim();
-  }
-  return cleaned.replace(/\s+/g, "");
 }
 
 async function reserveReminder(opts: {
@@ -238,10 +163,8 @@ export async function sendReminderForVisit(opts: {
   patientId: string;
   followUpDate: string;
 }) {
-  const token = normalizeSecret(process.env.WHATSAPP_ACCESS_TOKEN);
-  const phoneNumberId = normalizeSecret(process.env.WHATSAPP_PHONE_NUMBER_ID);
-  const templateName = normalizeSecret(process.env.WHATSAPP_TEMPLATE_NAME);
-  if (!token || !phoneNumberId || !templateName) {
+  const config = getWhatsAppConfig();
+  if (!config.token || !config.phoneNumberId || !config.templateName) {
     throw new Error("WhatsApp credentials are not configured");
   }
 
@@ -268,12 +191,10 @@ export async function sendReminderForVisit(opts: {
 
   try {
     const res = await sendWhatsAppTemplate({
-      token,
-      phoneNumberId,
-      templateName,
+      operation: "follow_up_reminder",
+      clinicId: opts.clinicId,
       to: phone,
-      patientName: patient.full_name,
-      followUpDate: opts.followUpDate,
+      parameters: [patient.full_name, opts.followUpDate],
     });
     await supabaseAdmin
       .from("follow_up_reminders")

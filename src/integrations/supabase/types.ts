@@ -396,11 +396,72 @@ export type Database = {
           },
         ]
       }
+      whatsapp_message_logs: {
+        Row: {
+          clinic_id: string | null
+          created_at: string
+          duration_ms: number | null
+          id: string
+          meta_error_code: string | null
+          meta_error_message: string | null
+          meta_error_type: string | null
+          operation: string
+          phone_number_id: string | null
+          provider_message_id: string | null
+          recipient: string | null
+          request_body: Json | null
+          request_url: string | null
+          response_body: Json | null
+          response_status: number | null
+          success: boolean
+          template_name: string | null
+        }
+        Insert: {
+          clinic_id?: string | null
+          created_at?: string
+          duration_ms?: number | null
+          id?: string
+          meta_error_code?: string | null
+          meta_error_message?: string | null
+          meta_error_type?: string | null
+          operation: string
+          phone_number_id?: string | null
+          provider_message_id?: string | null
+          recipient?: string | null
+          request_body?: Json | null
+          request_url?: string | null
+          response_body?: Json | null
+          response_status?: number | null
+          success?: boolean
+          template_name?: string | null
+        }
+        Update: {
+          clinic_id?: string | null
+          created_at?: string
+          duration_ms?: number | null
+          id?: string
+          meta_error_code?: string | null
+          meta_error_message?: string | null
+          meta_error_type?: string | null
+          operation?: string
+          phone_number_id?: string | null
+          provider_message_id?: string | null
+          recipient?: string | null
+          request_body?: Json | null
+          request_url?: string | null
+          response_body?: Json | null
+          response_status?: number | null
+          success?: boolean
+          template_name?: string | null
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
+      get_follow_up_scheduler_status: { Args: never; Returns: Json }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]

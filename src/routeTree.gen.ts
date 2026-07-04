@@ -14,6 +14,7 @@ import { Route as LoginRouteImport } from './routes/login'
 import { Route as AppRouteImport } from './routes/app'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as AppIndexRouteImport } from './routes/app.index'
+import { Route as AppWhatsappStatusRouteImport } from './routes/app.whatsapp-status'
 import { Route as AppRemediesRouteImport } from './routes/app.remedies'
 import { Route as AppPatientRouteImport } from './routes/app.patient'
 import { Route as AppFollowUpsRouteImport } from './routes/app.follow-ups'
@@ -46,6 +47,11 @@ const IndexRoute = IndexRouteImport.update({
 const AppIndexRoute = AppIndexRouteImport.update({
   id: '/',
   path: '/',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppWhatsappStatusRoute = AppWhatsappStatusRouteImport.update({
+  id: '/whatsapp-status',
+  path: '/whatsapp-status',
   getParentRoute: () => AppRoute,
 } as any)
 const AppRemediesRoute = AppRemediesRouteImport.update({
@@ -99,6 +105,7 @@ export interface FileRoutesByFullPath {
   '/app/follow-ups': typeof AppFollowUpsRoute
   '/app/patient': typeof AppPatientRoute
   '/app/remedies': typeof AppRemediesRoute
+  '/app/whatsapp-status': typeof AppWhatsappStatusRoute
   '/app/': typeof AppIndexRoute
   '/app/patients/$patientId': typeof AppPatientsPatientIdRoute
   '/app/patients/new': typeof AppPatientsNewRoute
@@ -113,6 +120,7 @@ export interface FileRoutesByTo {
   '/app/follow-ups': typeof AppFollowUpsRoute
   '/app/patient': typeof AppPatientRoute
   '/app/remedies': typeof AppRemediesRoute
+  '/app/whatsapp-status': typeof AppWhatsappStatusRoute
   '/app': typeof AppIndexRoute
   '/app/patients/$patientId': typeof AppPatientsPatientIdRoute
   '/app/patients/new': typeof AppPatientsNewRoute
@@ -129,6 +137,7 @@ export interface FileRoutesById {
   '/app/follow-ups': typeof AppFollowUpsRoute
   '/app/patient': typeof AppPatientRoute
   '/app/remedies': typeof AppRemediesRoute
+  '/app/whatsapp-status': typeof AppWhatsappStatusRoute
   '/app/': typeof AppIndexRoute
   '/app/patients/$patientId': typeof AppPatientsPatientIdRoute
   '/app/patients/new': typeof AppPatientsNewRoute
@@ -146,6 +155,7 @@ export interface FileRouteTypes {
     | '/app/follow-ups'
     | '/app/patient'
     | '/app/remedies'
+    | '/app/whatsapp-status'
     | '/app/'
     | '/app/patients/$patientId'
     | '/app/patients/new'
@@ -160,6 +170,7 @@ export interface FileRouteTypes {
     | '/app/follow-ups'
     | '/app/patient'
     | '/app/remedies'
+    | '/app/whatsapp-status'
     | '/app'
     | '/app/patients/$patientId'
     | '/app/patients/new'
@@ -175,6 +186,7 @@ export interface FileRouteTypes {
     | '/app/follow-ups'
     | '/app/patient'
     | '/app/remedies'
+    | '/app/whatsapp-status'
     | '/app/'
     | '/app/patients/$patientId'
     | '/app/patients/new'
@@ -225,6 +237,13 @@ declare module '@tanstack/react-router' {
       path: '/'
       fullPath: '/app/'
       preLoaderRoute: typeof AppIndexRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/app/whatsapp-status': {
+      id: '/app/whatsapp-status'
+      path: '/whatsapp-status'
+      fullPath: '/app/whatsapp-status'
+      preLoaderRoute: typeof AppWhatsappStatusRouteImport
       parentRoute: typeof AppRoute
     }
     '/app/remedies': {
@@ -291,6 +310,7 @@ interface AppRouteChildren {
   AppFollowUpsRoute: typeof AppFollowUpsRoute
   AppPatientRoute: typeof AppPatientRoute
   AppRemediesRoute: typeof AppRemediesRoute
+  AppWhatsappStatusRoute: typeof AppWhatsappStatusRoute
   AppIndexRoute: typeof AppIndexRoute
   AppPatientsPatientIdRoute: typeof AppPatientsPatientIdRoute
   AppPatientsNewRoute: typeof AppPatientsNewRoute
@@ -302,6 +322,7 @@ const AppRouteChildren: AppRouteChildren = {
   AppFollowUpsRoute: AppFollowUpsRoute,
   AppPatientRoute: AppPatientRoute,
   AppRemediesRoute: AppRemediesRoute,
+  AppWhatsappStatusRoute: AppWhatsappStatusRoute,
   AppIndexRoute: AppIndexRoute,
   AppPatientsPatientIdRoute: AppPatientsPatientIdRoute,
   AppPatientsNewRoute: AppPatientsNewRoute,

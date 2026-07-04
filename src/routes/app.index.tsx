@@ -1,7 +1,7 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { ArrowRight, CalendarCheck, HeartPulse, Package, Users } from "lucide-react";
+import { ArrowRight, CalendarCheck, HeartPulse, MessageCircle, Package, Users } from "lucide-react";
 import { useAuth } from "@/hooks/use-auth";
 import { useClinic } from "@/hooks/use-clinic";
 import { supabase } from "@/integrations/supabase/client";
@@ -113,6 +113,13 @@ function DoctorDashboard() {
       to: "/app/remedies" as const,
       hint: "Track inventory and stock",
     },
+    {
+      icon: MessageCircle,
+      label: "WhatsApp status",
+      value: "Check",
+      to: "/app/whatsapp-status" as const,
+      hint: "Config, logs & scheduler",
+    },
   ];
 
   return (
@@ -127,7 +134,7 @@ function DoctorDashboard() {
         </p>
       </div>
 
-      <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+      <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
         {tiles.map((t) => {
           const inner = (
             <>
