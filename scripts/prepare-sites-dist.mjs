@@ -99,9 +99,7 @@ ${marker}
 
 async function rewriteServerAssetUrls(filePath) {
   const source = await readFile(filePath, "utf8");
-  const rewritten = source
-    .replaceAll('"/assets/', '"/app-assets/')
-    .replaceAll("'/assets/", "'/app-assets/");
+  const rewritten = source.replaceAll("/assets/", "/app-assets/");
 
   if (rewritten !== source) {
     await writeFile(filePath, rewritten);
