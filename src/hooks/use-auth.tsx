@@ -28,10 +28,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setUser(newSession?.user ?? null);
       if (!newSession?.user) {
         setRole(null);
+        setLoading(false);
       } else {
+        setLoading(true);
         // Defer role fetch to avoid deadlocks in the listener
         setTimeout(() => {
-          void fetchRole(newSession.user.id).then(setRole);
+          void fetchRole(newSession.user).then((r) => {
+            setRole(r);
+            setLoading(false);
+          });
         }, 0);
       }
     });
@@ -40,7 +45,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setSession(data.session);
       setUser(data.session?.user ?? null);
       if (data.session?.user) {
-        void fetchRole(data.session.user.id).then((r) => {
+        void fetchRole(data.session.user).then((r) => {
           setRole(r);
           setLoading(false);
         });
@@ -74,17 +79,24 @@ export function useAuth() {
   return ctx;
 }
 
-async function fetchRole(userId: string): Promise<AppRole | null> {
+function metadataRole(user: User): AppRole | null {
+  const role = user.user_metadata?.role;
+  return role === "doctor" || role === "patient" || role === "staff" || role === "admin"
+    ? role
+    : null;
+}
+
+async function fetchRole(user: User): Promise<AppRole | null> {
   const { data, error } = await supabase
     .from("user_roles")
     .select("role")
-    .eq("user_id", userId)
+    .eq("user_id", user.id)
     .order("created_at", { ascending: true })
     .limit(1)
     .maybeSingle();
   if (error) {
     console.error("Failed to load role", error);
-    return null;
+    return metadataRole(user);
   }
-  return (data?.role as AppRole) ?? null;
+  return (data?.role as AppRole) ?? metadataRole(user);
 }

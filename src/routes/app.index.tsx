@@ -181,6 +181,10 @@ function DoctorDashboard() {
   const completedSteps = onboardingSteps.filter((step) => step.done).length;
   const showOnboarding = completedSteps < onboardingSteps.length;
 
+  if (!loading && role == null) {
+    return <div className="p-8 text-center text-sm text-muted-foreground">Loading...</div>;
+  }
+
   if (!loading && !clinicLoading && role !== "patient" && !clinic) {
     return <ClinicSetupCard />;
   }
