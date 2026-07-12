@@ -8,6 +8,7 @@ import { useClinic } from "@/hooks/use-clinic";
 import { useAuth } from "@/hooks/use-auth";
 import { patientSchema, type PatientInput } from "@/lib/patient-schema";
 import { TextField, TextAreaField, SelectField, FormRow } from "@/components/form-fields";
+import { ClinicSetupCard } from "@/components/clinic-setup-card";
 
 export const Route = createFileRoute("/app/patients/new")({
   component: NewPatientPage,
@@ -28,7 +29,7 @@ const empty: PatientInput = {
 
 function NewPatientPage() {
   const { user } = useAuth();
-  const { data: clinic } = useClinic();
+  const { data: clinic, isLoading: clinicLoading } = useClinic();
   const navigate = useNavigate();
   const qc = useQueryClient();
   const [form, setForm] = useState<PatientInput>(empty);
@@ -62,6 +63,14 @@ function NewPatientPage() {
     },
     onError: (e: Error) => toast.error(e.message),
   });
+
+  if (clinicLoading) {
+    return <div className="p-8 text-center text-sm text-muted-foreground">Loading...</div>;
+  }
+
+  if (!clinic) {
+    return <ClinicSetupCard />;
+  }
 
   return (
     <div className="mx-auto max-w-3xl px-4 py-6">

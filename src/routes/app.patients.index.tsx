@@ -4,6 +4,7 @@ import { useMemo, useState } from "react";
 import { Plus, Search, UserPlus, Users } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useClinic } from "@/hooks/use-clinic";
+import { ClinicSetupCard } from "@/components/clinic-setup-card";
 
 export const Route = createFileRoute("/app/patients/")({
   component: PatientsListPage,
@@ -49,13 +50,7 @@ function PatientsListPage() {
   }
 
   if (!clinic) {
-    return (
-      <div className="mx-auto max-w-md p-8 text-center">
-        <p className="text-sm text-muted-foreground">
-          No clinic found on your account. Please sign up as a doctor.
-        </p>
-      </div>
-    );
+    return <ClinicSetupCard />;
   }
 
   return (

@@ -15,6 +15,7 @@ import { useAuth } from "@/hooks/use-auth";
 import { useClinic } from "@/hooks/use-clinic";
 import { supabase } from "@/integrations/supabase/client";
 import { FollowUpRemindersCard } from "@/components/follow-up-reminders-card";
+import { ClinicSetupCard } from "@/components/clinic-setup-card";
 
 export const Route = createFileRoute("/app/")({
   component: DoctorDashboard,
@@ -22,7 +23,7 @@ export const Route = createFileRoute("/app/")({
 
 function DoctorDashboard() {
   const { user, role, loading } = useAuth();
-  const { data: clinic } = useClinic();
+  const { data: clinic, isLoading: clinicLoading } = useClinic();
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -179,6 +180,10 @@ function DoctorDashboard() {
 
   const completedSteps = onboardingSteps.filter((step) => step.done).length;
   const showOnboarding = completedSteps < onboardingSteps.length;
+
+  if (!loading && !clinicLoading && role !== "patient" && !clinic) {
+    return <ClinicSetupCard />;
+  }
 
   return (
     <div className="mx-auto max-w-5xl px-4 py-8">
