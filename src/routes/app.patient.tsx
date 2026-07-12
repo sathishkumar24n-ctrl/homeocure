@@ -618,33 +618,60 @@ function LinkRecordPanel({ userName }: { userName?: string }) {
   });
 
   return (
-    <div className="mx-auto max-w-md px-4 py-10">
-      <div className="rounded-3xl border border-border/60 bg-card p-6 shadow-card text-center">
-        <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-2xl bg-secondary text-secondary-foreground">
-          <Search className="h-5 w-5" />
+    <div className="mx-auto max-w-2xl px-4 py-10">
+      <div className="rounded-3xl border border-border/60 bg-card p-6 shadow-card sm:p-8">
+        <div className="flex flex-col gap-5 sm:flex-row sm:items-start">
+          <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-secondary text-secondary-foreground">
+            <Search className="h-5 w-5" />
+          </div>
+          <div className="min-w-0 flex-1">
+            <p className="text-xs font-semibold uppercase tracking-wide text-primary">
+              Link your clinic record
+            </p>
+            <h1 className="mt-1 text-2xl font-bold tracking-tight">
+              Welcome{userName ? `, ${userName}` : ""}
+            </h1>
+            <p className="mt-2 text-sm text-muted-foreground">
+              Enter the same WhatsApp number your clinic saved for you. HomeoCare will connect
+              your login to your existing patient profile.
+            </p>
+
+            <div className="mt-5 grid gap-3 sm:grid-cols-3">
+              {[
+                "Find your clinic profile",
+                "View prescriptions and visits",
+                "Book or reschedule appointments",
+              ].map((item) => (
+                <div key={item} className="rounded-2xl bg-secondary/45 p-3 text-sm text-foreground">
+                  <CheckCircle2 className="mb-2 h-4 w-4 text-primary" />
+                  {item}
+                </div>
+              ))}
+            </div>
+
+            <div className="mt-5 flex items-center gap-2 rounded-xl border border-input bg-background px-3 py-2">
+              <Phone className="h-4 w-4 text-muted-foreground" />
+              <input
+                type="tel"
+                value={phone}
+                onChange={(e) => setPhone(e.target.value)}
+                placeholder="+91 98765 43210"
+                className="w-full bg-transparent text-sm focus:outline-none"
+              />
+            </div>
+            <button
+              onClick={() => mut.mutate()}
+              disabled={!phone.trim() || mut.isPending}
+              className="mt-4 inline-flex w-full items-center justify-center gap-2 rounded-full bg-gradient-primary px-4 py-2.5 text-sm font-semibold text-primary-foreground disabled:opacity-60"
+            >
+              {mut.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
+              Find my record
+            </button>
+            <p className="mt-3 text-xs text-muted-foreground">
+              No match? Ask your clinic to add you as a patient with this phone number, then try again.
+            </p>
+          </div>
         </div>
-        <h1 className="mt-3 text-xl font-bold">Welcome{userName ? `, ${userName}` : ""}</h1>
-        <p className="mt-1 text-sm text-muted-foreground">
-          Find your patient record at your homeopathy clinic by entering the phone number you gave them.
-        </p>
-        <div className="mt-4 flex items-center gap-2 rounded-xl border border-input bg-card px-3 py-2">
-          <Phone className="h-4 w-4 text-muted-foreground" />
-          <input
-            type="tel"
-            value={phone}
-            onChange={(e) => setPhone(e.target.value)}
-            placeholder="+1 555 123 4567"
-            className="w-full bg-transparent text-sm focus:outline-none"
-          />
-        </div>
-        <button
-          onClick={() => mut.mutate()}
-          disabled={!phone.trim() || mut.isPending}
-          className="mt-4 inline-flex w-full items-center justify-center gap-2 rounded-full bg-gradient-primary px-4 py-2.5 text-sm font-semibold text-primary-foreground disabled:opacity-60"
-        >
-          {mut.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
-          Find my record
-        </button>
       </div>
     </div>
   );

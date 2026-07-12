@@ -1,7 +1,23 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useState } from "react";
-import { ArrowLeft, CalendarPlus, FileText, Loader2, Mail, MapPin, Phone, Trash2 } from "lucide-react";
+import { useMemo, useState } from "react";
+import {
+  ArrowLeft,
+  CalendarCheck,
+  CalendarPlus,
+  Copy,
+  Clock,
+  FileText,
+  Loader2,
+  Mail,
+  MapPin,
+  MessageCircle,
+  Phone,
+  Printer,
+  Search,
+  Stethoscope,
+  Trash2,
+} from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/use-auth";
@@ -20,6 +36,9 @@ function PatientDetailPage() {
   const navigate = useNavigate();
   const qc = useQueryClient();
   const [showVisit, setShowVisit] = useState(false);
+  const [showAppointment, setShowAppointment] = useState(false);
+  const [visitSearch, setVisitSearch] = useState("");
+  const [whatsappKind, setWhatsappKind] = useState<WhatsAppMessageKind>("followUp");
 
   const patientQ = useQuery({
     queryKey: ["patient", patientId],
@@ -44,6 +63,19 @@ function PatientDetailPage() {
         .order("visit_date", { ascending: false });
       if (error) throw error;
       return data;
+    },
+  });
+
+  const appointmentsQ = useQuery({
+    queryKey: ["patient-appointments", patientId],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("appointments")
+        .select("id, clinic_id, patient_id, scheduled_at, duration_minutes, status, reason, notes")
+        .eq("patient_id", patientId)
+        .order("scheduled_at", { ascending: true });
+      if (error) throw error;
+      return data ?? [];
     },
   });
 
@@ -72,6 +104,52 @@ function PatientDetailPage() {
   }
 
   const p = patientQ.data;
+  const visits = visitsQ.data ?? [];
+  const appointments = appointmentsQ.data ?? [];
+  const latestVisit = visits[0];
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const nextFollowUp = [...visits]
+    .filter((v) => v.next_follow_up && new Date(v.next_follow_up as string) >= today)
+    .sort(
+      (a, b) =>
+        new Date(a.next_follow_up as string).getTime() -
+        new Date(b.next_follow_up as string).getTime(),
+    )[0];
+  const upcomingAppointments = appointments.filter(
+    (a) => new Date(a.scheduled_at) >= new Date() && a.status !== "cancelled",
+  );
+  const nextAppointment = upcomingAppointments[0];
+  const whatsappMessage = buildWhatsAppMessage({
+    kind: whatsappKind,
+    patientName: p.full_name,
+    clinicName: clinic?.name,
+    latestVisit,
+    nextFollowUp,
+    nextAppointment,
+  });
+  const whatsappHref = p.phone
+    ? buildWhatsAppHref(p.phone, whatsappMessage)
+    : undefined;
+  const filteredVisits = useMemo(() => {
+    const term = visitSearch.trim().toLowerCase();
+    if (!term) return visits;
+    return visits.filter((visit) =>
+      [
+        visit.visit_date,
+        visit.chief_complaint,
+        visit.symptoms,
+        visit.constitution,
+        visit.miasm,
+        visit.modalities,
+        visit.prescription,
+        visit.dosage,
+        visit.notes,
+      ]
+        .filter(Boolean)
+        .some((value) => String(value).toLowerCase().includes(term)),
+    );
+  }, [visits, visitSearch]);
 
   return (
     <div className="mx-auto max-w-3xl px-4 py-6">
@@ -84,7 +162,7 @@ function PatientDetailPage() {
 
       {/* Header card */}
       <div className="rounded-3xl bg-gradient-soft p-5 shadow-card sm:p-6">
-        <div className="flex items-start gap-4">
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-start">
           <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-card text-lg font-bold text-foreground shadow-soft">
             {initials(p.full_name)}
           </div>
@@ -101,8 +179,70 @@ function PatientDetailPage() {
               {p.address && <Pill icon={<MapPin className="h-3 w-3" />}>{p.address}</Pill>}
             </div>
           </div>
+          <div className="flex flex-wrap gap-2 sm:justify-end">
+            <button
+              onClick={() => {
+                setShowAppointment(false);
+                setShowVisit((v) => !v);
+              }}
+              className="inline-flex items-center gap-1.5 rounded-full bg-gradient-primary px-3.5 py-2 text-xs font-semibold text-primary-foreground shadow-soft"
+            >
+              <Stethoscope className="h-4 w-4" /> New visit
+            </button>
+            <button
+              onClick={() => {
+                setShowVisit(false);
+                setShowAppointment((v) => !v);
+              }}
+              className="inline-flex items-center gap-1.5 rounded-full border border-border bg-card px-3.5 py-2 text-xs font-semibold text-foreground shadow-soft transition-smooth hover:bg-muted"
+            >
+              <CalendarPlus className="h-4 w-4" /> Book
+            </button>
+            {whatsappHref && (
+              <a
+                href={whatsappHref}
+                target="_blank"
+                rel="noreferrer"
+                className="inline-flex items-center gap-1.5 rounded-full border border-border bg-card px-3.5 py-2 text-xs font-semibold text-foreground shadow-soft transition-smooth hover:bg-muted"
+              >
+                <MessageCircle className="h-4 w-4" /> WhatsApp
+              </a>
+            )}
+          </div>
         </div>
       </div>
+
+      <div className="mt-4 grid gap-3 sm:grid-cols-3">
+        <WorkflowCard
+          icon={<FileText className="h-4 w-4" />}
+          label="Last visit"
+          value={latestVisit ? formatDate(latestVisit.visit_date) : "No visits"}
+          hint={latestVisit?.chief_complaint ?? "Record the first consultation"}
+        />
+        <WorkflowCard
+          icon={<Clock className="h-4 w-4" />}
+          label="Next follow-up"
+          value={nextFollowUp ? formatDate(nextFollowUp.next_follow_up as string) : "Not set"}
+          hint={nextFollowUp?.chief_complaint ?? "Add a follow-up date in a visit"}
+        />
+        <WorkflowCard
+          icon={<CalendarCheck className="h-4 w-4" />}
+          label="Next appointment"
+          value={nextAppointment ? formatDateTime(nextAppointment.scheduled_at) : "Not booked"}
+          hint={nextAppointment?.reason ?? "Book from this patient profile"}
+        />
+      </div>
+
+      {p.phone && (
+        <WhatsAppComposer
+          patientName={p.full_name}
+          phone={p.phone}
+          message={whatsappMessage}
+          selected={whatsappKind}
+          onSelect={setWhatsappKind}
+          href={whatsappHref}
+        />
+      )}
 
       {/* Medical background */}
       {(p.allergies || p.chronic_conditions || p.notes) && (
@@ -119,7 +259,12 @@ function PatientDetailPage() {
 
       {/* Visit history */}
       <div className="mt-6 flex items-center justify-between">
-        <h2 className="text-lg font-bold tracking-tight">Visit history</h2>
+        <div>
+          <h2 className="text-lg font-bold tracking-tight">Visit history</h2>
+          <p className="text-xs text-muted-foreground">
+            {visits.length} visit{visits.length === 1 ? "" : "s"} recorded
+          </p>
+        </div>
         <button
           onClick={() => setShowVisit((v) => !v)}
           className="inline-flex items-center gap-1.5 rounded-full bg-gradient-primary px-3.5 py-2 text-xs font-semibold text-primary-foreground shadow-soft"
@@ -140,6 +285,32 @@ function PatientDetailPage() {
         />
       )}
 
+      {showAppointment && (
+        <BookAppointmentForm
+          patientId={patientId}
+          clinicId={p.clinic_id}
+          createdBy={user?.id}
+          onDone={() => {
+            setShowAppointment(false);
+            qc.invalidateQueries({ queryKey: ["patient-appointments", patientId] });
+            qc.invalidateQueries({ queryKey: ["appointments", p.clinic_id] });
+            qc.invalidateQueries({ queryKey: ["today-appointments-count", p.clinic_id] });
+          }}
+        />
+      )}
+
+      {visits.length > 0 && (
+        <div className="mt-4 flex items-center gap-2 rounded-2xl border border-input bg-card px-3 py-2 shadow-card">
+          <Search className="h-4 w-4 text-muted-foreground" />
+          <input
+            value={visitSearch}
+            onChange={(e) => setVisitSearch(e.target.value)}
+            placeholder="Search symptoms, remedies, miasm, notes..."
+            className="w-full bg-transparent text-sm text-foreground placeholder:text-muted-foreground/70 focus:outline-none"
+          />
+        </div>
+      )}
+
       <div className="mt-4 space-y-3">
         {visitsQ.isLoading ? (
           <div className="rounded-2xl border border-border/60 bg-card p-6 text-center text-sm text-muted-foreground">
@@ -150,8 +321,43 @@ function PatientDetailPage() {
             <FileText className="mx-auto h-6 w-6 text-muted-foreground" />
             <p className="mt-2 text-sm text-muted-foreground">No visits recorded yet.</p>
           </div>
+        ) : filteredVisits.length === 0 ? (
+          <div className="rounded-2xl border border-dashed border-border bg-card/60 p-8 text-center">
+            <Search className="mx-auto h-6 w-6 text-muted-foreground" />
+            <p className="mt-2 text-sm text-muted-foreground">No visits match that search.</p>
+          </div>
         ) : (
-          visitsQ.data.map((v) => <VisitCard key={v.id} visit={v} />)
+          filteredVisits.map((v) => <VisitCard key={v.id} visit={v} patientName={p.full_name} />)
+        )}
+      </div>
+
+      <div className="mt-8">
+        <div className="mb-3 flex items-center justify-between">
+          <h2 className="text-lg font-bold tracking-tight">Upcoming appointments</h2>
+          <button
+            onClick={() => {
+              setShowVisit(false);
+              setShowAppointment(true);
+            }}
+            className="inline-flex items-center gap-1.5 rounded-full border border-border bg-card px-3 py-1.5 text-xs font-semibold text-foreground transition-smooth hover:bg-muted"
+          >
+            <CalendarPlus className="h-3.5 w-3.5" /> Book
+          </button>
+        </div>
+        {appointmentsQ.isLoading ? (
+          <div className="rounded-2xl border border-border/60 bg-card p-5 text-center text-sm text-muted-foreground">
+            Loading appointments...
+          </div>
+        ) : upcomingAppointments.length === 0 ? (
+          <div className="rounded-2xl border border-dashed border-border bg-card/60 p-6 text-center text-sm text-muted-foreground">
+            No upcoming appointments for this patient.
+          </div>
+        ) : (
+          <div className="space-y-2">
+            {upcomingAppointments.slice(0, 3).map((a) => (
+              <AppointmentCard key={a.id} appointment={a} />
+            ))}
+          </div>
         )}
       </div>
 
@@ -198,22 +404,173 @@ function InfoCard({ title, body }: { title: string; body: string }) {
   );
 }
 
-function VisitCard({ visit }: { visit: any }) {
+function WorkflowCard({
+  icon,
+  label,
+  value,
+  hint,
+}: {
+  icon: React.ReactNode;
+  label: string;
+  value: string;
+  hint?: string | null;
+}) {
   return (
     <div className="rounded-2xl border border-border/60 bg-card p-4 shadow-card">
-      <div className="flex items-center justify-between">
-        <p className="text-sm font-semibold text-foreground">
-          {new Date(visit.visit_date).toLocaleDateString(undefined, {
-            year: "numeric",
-            month: "short",
-            day: "numeric",
-          })}
-        </p>
-        {visit.next_follow_up && (
-          <span className="rounded-full bg-secondary px-2.5 py-0.5 text-xs font-medium text-secondary-foreground">
-            Follow-up: {visit.next_follow_up}
-          </span>
+      <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+        <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-secondary text-secondary-foreground">
+          {icon}
+        </span>
+        {label}
+      </div>
+      <p className="mt-3 text-base font-bold text-foreground">{value}</p>
+      {hint && <p className="mt-1 line-clamp-2 text-xs text-muted-foreground">{hint}</p>}
+    </div>
+  );
+}
+
+type WhatsAppMessageKind = "followUp" | "appointment" | "medicine" | "review";
+
+const whatsappOptions: Array<{ key: WhatsAppMessageKind; label: string }> = [
+  { key: "followUp", label: "Follow-up" },
+  { key: "appointment", label: "Appointment" },
+  { key: "medicine", label: "Medicine" },
+  { key: "review", label: "Review" },
+];
+
+function WhatsAppComposer({
+  patientName,
+  phone,
+  message,
+  selected,
+  onSelect,
+  href,
+}: {
+  patientName: string;
+  phone: string;
+  message: string;
+  selected: WhatsAppMessageKind;
+  onSelect: (kind: WhatsAppMessageKind) => void;
+  href?: string;
+}) {
+  async function copyMessage() {
+    try {
+      await navigator.clipboard.writeText(message);
+      toast.success("WhatsApp message copied");
+    } catch {
+      toast.error("Could not copy message");
+    }
+  }
+
+  return (
+    <div className="mt-4 rounded-2xl border border-border/60 bg-card p-4 shadow-card">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+        <div>
+          <div className="flex items-center gap-2">
+            <MessageCircle className="h-4 w-4 text-primary" />
+            <h2 className="text-sm font-bold tracking-tight">WhatsApp message</h2>
+          </div>
+          <p className="mt-1 text-xs text-muted-foreground">
+            {patientName} · {phone}
+          </p>
+        </div>
+        <div className="flex flex-wrap gap-1.5">
+          {whatsappOptions.map((option) => (
+            <button
+              key={option.key}
+              onClick={() => onSelect(option.key)}
+              className={
+                selected === option.key
+                  ? "rounded-full bg-gradient-primary px-3 py-1.5 text-xs font-semibold text-primary-foreground shadow-soft"
+                  : "rounded-full border border-border bg-card px-3 py-1.5 text-xs font-semibold text-foreground transition-smooth hover:bg-muted"
+              }
+            >
+              {option.label}
+            </button>
+          ))}
+        </div>
+      </div>
+      <div className="mt-3 rounded-xl bg-muted/40 p-3 text-sm leading-relaxed text-foreground">
+        {message}
+      </div>
+      <div className="mt-3 flex flex-wrap gap-2">
+        {href && (
+          <a
+            href={href}
+            target="_blank"
+            rel="noreferrer"
+            className="inline-flex items-center gap-1.5 rounded-full bg-gradient-primary px-3.5 py-2 text-xs font-semibold text-primary-foreground shadow-soft"
+          >
+            <MessageCircle className="h-3.5 w-3.5" /> Open WhatsApp
+          </a>
         )}
+        <button
+          onClick={copyMessage}
+          className="inline-flex items-center gap-1.5 rounded-full border border-border bg-card px-3.5 py-2 text-xs font-semibold text-foreground transition-smooth hover:bg-muted"
+        >
+          <Copy className="h-3.5 w-3.5" /> Copy message
+        </button>
+      </div>
+    </div>
+  );
+}
+
+function AppointmentCard({ appointment }: { appointment: any }) {
+  const dt = new Date(appointment.scheduled_at);
+  return (
+    <div className="flex items-center gap-3 rounded-2xl border border-border/60 bg-card p-4 shadow-card">
+      <div className="flex h-12 w-12 shrink-0 flex-col items-center justify-center rounded-xl bg-secondary text-secondary-foreground">
+        <span className="text-[10px] font-semibold uppercase">
+          {dt.toLocaleDateString(undefined, { month: "short" })}
+        </span>
+        <span className="text-base font-bold leading-none">{dt.getDate()}</span>
+      </div>
+      <div className="min-w-0 flex-1">
+        <p className="font-semibold text-foreground">
+          {dt.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+          <span className="ml-2 rounded-full bg-secondary px-2 py-0.5 text-[10px] font-medium capitalize text-secondary-foreground">
+            {appointment.status}
+          </span>
+        </p>
+        <p className="mt-0.5 truncate text-xs text-muted-foreground">
+          {appointment.duration_minutes} min
+          {appointment.reason ? ` · ${appointment.reason}` : ""}
+        </p>
+      </div>
+      <Link
+        to="/app/appointments"
+        className="rounded-full border border-border px-3 py-1.5 text-xs font-semibold text-foreground transition-smooth hover:bg-muted"
+      >
+        Open
+      </Link>
+    </div>
+  );
+}
+
+function VisitCard({ visit, patientName }: { visit: any; patientName: string }) {
+  return (
+    <div className="rounded-2xl border border-border/60 bg-card p-4 shadow-card">
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <div>
+          <p className="text-sm font-semibold text-foreground">
+            {new Date(visit.visit_date).toLocaleDateString(undefined, {
+              year: "numeric",
+              month: "short",
+              day: "numeric",
+            })}
+          </p>
+          {visit.next_follow_up && (
+            <p className="mt-0.5 text-xs font-medium text-primary">
+              Follow-up: {formatDate(visit.next_follow_up)}
+            </p>
+          )}
+        </div>
+        <button
+          onClick={() => printVisitSummary(patientName, visit)}
+          className="inline-flex items-center gap-1.5 rounded-full border border-border bg-card px-3 py-1.5 text-xs font-semibold text-foreground transition-smooth hover:bg-muted"
+        >
+          <Printer className="h-3.5 w-3.5" /> Print
+        </button>
       </div>
       {visit.chief_complaint && (
         <p className="mt-2 text-sm font-medium text-foreground">{visit.chief_complaint}</p>
@@ -245,6 +602,152 @@ function initials(name: string) {
   return name.split(" ").filter(Boolean).slice(0, 2).map((n) => n[0]?.toUpperCase()).join("");
 }
 
+function formatDate(value?: string | null) {
+  if (!value) return "Not set";
+  return new Date(value).toLocaleDateString(undefined, {
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+  });
+}
+
+function formatDateTime(value?: string | null) {
+  if (!value) return "Not booked";
+  return new Date(value).toLocaleString(undefined, {
+    month: "short",
+    day: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
+  });
+}
+
+function normalizePhoneForWhatsApp(raw: string) {
+  return raw.replace(/[^\d]/g, "");
+}
+
+function buildWhatsAppHref(phone: string, message: string) {
+  return `https://wa.me/${normalizePhoneForWhatsApp(phone)}?text=${encodeURIComponent(message)}`;
+}
+
+function buildWhatsAppMessage({
+  kind,
+  patientName,
+  clinicName,
+  latestVisit,
+  nextFollowUp,
+  nextAppointment,
+}: {
+  kind: WhatsAppMessageKind;
+  patientName: string;
+  clinicName?: string | null;
+  latestVisit?: any;
+  nextFollowUp?: any;
+  nextAppointment?: any;
+}) {
+  const name = firstName(patientName);
+  const clinic = clinicName?.trim() || "your clinic";
+
+  if (kind === "appointment") {
+    const when = nextAppointment
+      ? formatDateTime(nextAppointment.scheduled_at)
+      : "your scheduled appointment";
+    return `Hi ${name}, this is a reminder from ${clinic}. Your appointment is ${when}. Please reply Confirm if you can attend, or Reschedule if you need another time.`;
+  }
+
+  if (kind === "medicine") {
+    const prescription = latestVisit?.prescription?.trim();
+    const dosage = latestVisit?.dosage?.trim();
+    const followUp = latestVisit?.next_follow_up
+      ? ` Your next follow-up is on ${formatDate(latestVisit.next_follow_up)}.`
+      : "";
+    return `Hi ${name}, medicine instructions from ${clinic}: ${prescription || "please continue the medicine as advised"}${dosage ? `, ${dosage}` : ""}.${followUp} Reply if symptoms change or you need clarification.`;
+  }
+
+  if (kind === "review") {
+    const complaint = latestVisit?.chief_complaint?.trim();
+    return `Hi ${name}, ${clinic} is checking in${complaint ? ` about ${complaint}` : ""}. Please share how you are feeling now, any changes in symptoms, and whether the medicine suited you.`;
+  }
+
+  const followUpDate = nextFollowUp?.next_follow_up
+    ? formatDate(nextFollowUp.next_follow_up)
+    : "your next follow-up";
+  return `Hi ${name}, this is a follow-up reminder from ${clinic}. Your consultation is due on ${followUpDate}. Please reply Confirm to keep it, or Reschedule if another time is better.`;
+}
+
+function firstName(name: string) {
+  return name.trim().split(/\s+/)[0] || "there";
+}
+
+function printVisitSummary(patientName: string, visit: any) {
+  const rows = [
+    ["Visit date", formatDate(visit.visit_date)],
+    ["Chief complaint", visit.chief_complaint],
+    ["Symptoms", visit.symptoms],
+    ["Constitution", visit.constitution],
+    ["Miasm", visit.miasm],
+    ["Modalities", visit.modalities],
+    ["Prescription", visit.prescription],
+    ["Dosage", visit.dosage],
+    ["Next follow-up", visit.next_follow_up ? formatDate(visit.next_follow_up) : null],
+    ["Fee", visit.fee != null ? `INR ${Number(visit.fee).toFixed(2)}` : null],
+    ["Notes", visit.notes],
+  ].filter(([, value]) => value != null && String(value).trim().length > 0);
+
+  const html = `<!doctype html>
+    <html>
+      <head>
+        <title>${escapeHtml(patientName)} - Visit Summary</title>
+        <style>
+          body { font-family: Arial, sans-serif; color: #1f2937; margin: 32px; }
+          h1 { font-size: 22px; margin: 0 0 4px; }
+          h2 { font-size: 14px; color: #047857; margin: 0 0 24px; }
+          .row { border-top: 1px solid #e5e7eb; padding: 12px 0; }
+          .label { color: #6b7280; font-size: 11px; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; }
+          .value { margin-top: 4px; white-space: pre-wrap; line-height: 1.45; }
+          .footer { margin-top: 32px; color: #6b7280; font-size: 12px; }
+        </style>
+      </head>
+      <body>
+        <h1>${escapeHtml(patientName)}</h1>
+        <h2>HomeoCare Visit Summary</h2>
+        ${rows
+          .map(
+            ([label, value]) => `
+              <div class="row">
+                <div class="label">${escapeHtml(String(label))}</div>
+                <div class="value">${escapeHtml(String(value))}</div>
+              </div>
+            `,
+          )
+          .join("")}
+        <div class="footer">Generated from HomeoCare on ${escapeHtml(formatDate(new Date().toISOString()))}</div>
+        <script>window.print();</script>
+      </body>
+    </html>`;
+
+  const win = window.open("", "_blank", "noopener,noreferrer");
+  if (!win) {
+    toast.error("Pop-up blocked. Allow pop-ups to print visit summaries.");
+    return;
+  }
+  win.document.write(html);
+  win.document.close();
+}
+
+function escapeHtml(value: string) {
+  return value
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#039;");
+}
+
+function toLocalInput(d: Date) {
+  const pad = (n: number) => String(n).padStart(2, "0");
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+}
+
 const emptyVisit: VisitInput = {
   visit_date: new Date().toISOString().slice(0, 10),
   chief_complaint: "",
@@ -258,6 +761,39 @@ const emptyVisit: VisitInput = {
   next_follow_up: "",
   notes: "",
 };
+
+const prescriptionTemplates = [
+  {
+    label: "Acute cold",
+    prescription: "Aconite 30C",
+    dosage: "3 globules every 4 hours for 1 day, then review",
+    notes: "Hydration, steam inhalation, and observe fever pattern.",
+  },
+  {
+    label: "Digestive upset",
+    prescription: "Nux Vomica 30C",
+    dosage: "3 globules at night for 3 days",
+    notes: "Avoid heavy food, late meals, and stimulants during course.",
+  },
+  {
+    label: "Skin follow-up",
+    prescription: "Sulphur 200C",
+    dosage: "Single dose, wait and watch",
+    notes: "Do not repeat unless improvement plateaus or symptoms return.",
+  },
+  {
+    label: "Sleep/anxiety",
+    prescription: "Ignatia 30C",
+    dosage: "3 globules once daily for 5 days",
+    notes: "Track sleep quality, triggers, and emotional state before follow-up.",
+  },
+];
+
+const followUpShortcuts = [
+  { label: "7 days", days: 7 },
+  { label: "15 days", days: 15 },
+  { label: "30 days", days: 30 },
+];
 
 function NewVisitForm({
   patientId,
@@ -273,6 +809,21 @@ function NewVisitForm({
   const [form, setForm] = useState<VisitInput>(emptyVisit);
   const set = <K extends keyof VisitInput>(k: K, v: VisitInput[K]) =>
     setForm((f) => ({ ...f, [k]: v }));
+
+  const applyTemplate = (template: (typeof prescriptionTemplates)[number]) => {
+    setForm((f) => ({
+      ...f,
+      prescription: template.prescription,
+      dosage: template.dosage,
+      notes: f.notes ? `${f.notes}\n${template.notes}` : template.notes,
+    }));
+  };
+
+  const setFollowUpDays = (days: number) => {
+    const d = new Date(form.visit_date || new Date().toISOString());
+    d.setDate(d.getDate() + days);
+    set("next_follow_up", d.toISOString().slice(0, 10));
+  };
 
   const mutation = useMutation({
     mutationFn: async (input: VisitInput) => {
@@ -318,6 +869,19 @@ function NewVisitForm({
           onChange={(e) => set("next_follow_up", e.target.value)}
         />
       </FormRow>
+      <div className="flex flex-wrap items-center gap-2 rounded-2xl bg-secondary/35 p-3">
+        <span className="text-xs font-semibold text-muted-foreground">Follow-up</span>
+        {followUpShortcuts.map((shortcut) => (
+          <button
+            key={shortcut.label}
+            type="button"
+            onClick={() => setFollowUpDays(shortcut.days)}
+            className="rounded-full border border-border bg-card px-3 py-1 text-xs font-semibold text-foreground transition-smooth hover:bg-muted"
+          >
+            {shortcut.label}
+          </button>
+        ))}
+      </div>
       <TextAreaField
         label="Chief complaint"
         value={form.chief_complaint ?? ""}
@@ -353,6 +917,23 @@ function NewVisitForm({
         maxLength={500}
         onChange={(e) => set("modalities", e.target.value)}
       />
+      <div className="rounded-2xl border border-border/60 bg-secondary/25 p-3">
+        <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+          Prescription templates
+        </p>
+        <div className="mt-2 flex flex-wrap gap-2">
+          {prescriptionTemplates.map((template) => (
+            <button
+              key={template.label}
+              type="button"
+              onClick={() => applyTemplate(template)}
+              className="rounded-full border border-border bg-card px-3 py-1.5 text-xs font-semibold text-foreground transition-smooth hover:bg-muted"
+            >
+              {template.label}
+            </button>
+          ))}
+        </div>
+      </div>
       <FormRow>
         <TextField
           label="Prescription"
@@ -401,6 +982,111 @@ function NewVisitForm({
         >
           {mutation.isPending && <Loader2 className="h-4 w-4 animate-spin" />}
           Save visit
+        </button>
+      </div>
+    </form>
+  );
+}
+
+function BookAppointmentForm({
+  patientId,
+  clinicId,
+  createdBy,
+  onDone,
+}: {
+  patientId: string;
+  clinicId: string;
+  createdBy?: string;
+  onDone: () => void;
+}) {
+  const now = new Date();
+  now.setMinutes(now.getMinutes() - (now.getMinutes() % 15) + 15, 0, 0);
+  const [scheduledAt, setScheduledAt] = useState(toLocalInput(now));
+  const [duration, setDuration] = useState(30);
+  const [reason, setReason] = useState("");
+  const [notes, setNotes] = useState("");
+
+  const mutation = useMutation({
+    mutationFn: async () => {
+      if (!scheduledAt) throw new Error("Pick a date and time");
+      const { error } = await supabase.from("appointments").insert({
+        clinic_id: clinicId,
+        patient_id: patientId,
+        scheduled_at: new Date(scheduledAt).toISOString(),
+        duration_minutes: Number(duration || 30),
+        status: "scheduled",
+        reason: reason.trim() || null,
+        notes: notes.trim() || null,
+        created_by: createdBy,
+      });
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      toast.success("Appointment booked");
+      onDone();
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
+  return (
+    <form
+      onSubmit={(e) => {
+        e.preventDefault();
+        mutation.mutate();
+      }}
+      className="mt-4 space-y-3 rounded-2xl border border-border/60 bg-card p-5 shadow-card"
+    >
+      <div>
+        <p className="text-sm font-bold text-foreground">Book appointment</p>
+        <p className="text-xs text-muted-foreground">
+          Schedule the next consultation without leaving this patient profile.
+        </p>
+      </div>
+      <FormRow>
+        <TextField
+          label="Date & time"
+          type="datetime-local"
+          required
+          value={scheduledAt}
+          onChange={(e) => setScheduledAt(e.target.value)}
+        />
+        <TextField
+          label="Duration (minutes)"
+          type="number"
+          min="5"
+          step="5"
+          value={duration}
+          onChange={(e) => setDuration(Number(e.target.value) || 30)}
+        />
+      </FormRow>
+      <TextField
+        label="Reason"
+        placeholder="Review, acute complaint, follow-up"
+        value={reason}
+        maxLength={200}
+        onChange={(e) => setReason(e.target.value)}
+      />
+      <TextAreaField
+        label="Notes"
+        value={notes}
+        maxLength={500}
+        onChange={(e) => setNotes(e.target.value)}
+      />
+      <div className="flex justify-end gap-2 pt-1">
+        <button
+          type="button"
+          onClick={onDone}
+          className="rounded-xl border border-border bg-card px-4 py-2.5 text-sm font-medium hover:bg-muted"
+        >
+          Cancel
+        </button>
+        <button
+          type="submit"
+          disabled={mutation.isPending}
+          className="inline-flex items-center gap-2 rounded-xl bg-gradient-primary px-5 py-2.5 text-sm font-semibold text-primary-foreground shadow-soft transition-smooth hover:shadow-elevated disabled:opacity-60"
+        >
+          {mutation.isPending && <Loader2 className="h-4 w-4 animate-spin" />}
+          Book appointment
         </button>
       </div>
     </form>

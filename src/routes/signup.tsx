@@ -1,7 +1,7 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
-import { Loader2 } from "lucide-react";
+import { CheckCircle2, Loader2 } from "lucide-react";
 import { AuthShell, Field, PrimaryButton, RoleToggle } from "@/components/auth-shell";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/use-auth";
@@ -73,6 +73,19 @@ function SignupPage() {
     }
   };
 
+  const roleSteps =
+    role === "doctor"
+      ? [
+          "Create your clinic profile",
+          "Add patients with WhatsApp numbers",
+          "Start booking visits and follow-ups",
+        ]
+      : [
+          "Create your patient login",
+          "Link the phone number your clinic has",
+          "Book appointments and view prescriptions",
+        ];
+
   return (
     <AuthShell
       title="Create your account"
@@ -92,6 +105,19 @@ function SignupPage() {
     >
       <form className="space-y-4" onSubmit={onSubmit}>
         <RoleToggle value={role} onChange={setRole} />
+        <div className="rounded-2xl border border-border/60 bg-secondary/40 p-4">
+          <p className="text-sm font-semibold text-foreground">
+            {role === "doctor" ? "Clinic setup path" : "Patient access path"}
+          </p>
+          <div className="mt-3 space-y-2">
+            {roleSteps.map((step) => (
+              <div key={step} className="flex items-start gap-2 text-sm text-muted-foreground">
+                <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-primary" />
+                <span>{step}</span>
+              </div>
+            ))}
+          </div>
+        </div>
         <Field label="Full name" placeholder="Dr. Asha Mehta" autoComplete="name" value={fullName} onChange={setFullName} />
         {role === "doctor" && (
           <Field label="Clinic name" placeholder="Mehta Homeopathy Clinic" value={clinicName} onChange={setClinicName} />

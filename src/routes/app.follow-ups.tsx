@@ -214,6 +214,7 @@ function FollowUpCenter() {
         : tab === "missed"
           ? buckets.missed
           : [];
+  const eligibleToSend = list.filter((v) => v.patients?.phone && !sentVisitIds.has(v.id));
 
   return (
     <div className="mx-auto max-w-5xl px-4 py-8">
@@ -231,7 +232,14 @@ function FollowUpCenter() {
         </div>
         <button
           onClick={() => sendBatch.mutate()}
-          disabled={sendBatch.isPending}
+          disabled={sendBatch.isPending || tab === "sent" || eligibleToSend.length === 0}
+          title={
+            tab === "sent"
+              ? "Sent history is read-only"
+              : eligibleToSend.length === 0
+                ? "No eligible patients with WhatsApp numbers in this tab"
+                : undefined
+          }
           className="inline-flex items-center gap-1.5 rounded-full bg-gradient-primary px-4 py-2 text-xs font-semibold text-primary-foreground shadow-soft disabled:opacity-60"
         >
           {sendBatch.isPending ? (
@@ -239,7 +247,8 @@ function FollowUpCenter() {
           ) : (
             <Send className="h-3.5 w-3.5" />
           )}
-          Send {tab === "sent" ? "batch" : tab === "missed" ? "to missed" : tab === "upcoming" ? "to upcoming" : "to today's"}
+          Send {eligibleToSend.length > 0 ? eligibleToSend.length : ""}
+          {tab === "sent" ? " reminders" : tab === "missed" ? " to missed" : tab === "upcoming" ? " to upcoming" : " due today"}
         </button>
       </div>
 
