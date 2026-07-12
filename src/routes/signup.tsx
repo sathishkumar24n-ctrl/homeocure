@@ -118,11 +118,24 @@ function SignupPage() {
             ))}
           </div>
         </div>
-        <Field label="Full name" placeholder="Dr. Asha Mehta" autoComplete="name" value={fullName} onChange={setFullName} />
+        <Field
+          label="Full name"
+          placeholder={role === "doctor" ? "Dr. Asha Mehta" : "Asha Mehta"}
+          autoComplete="name"
+          value={fullName}
+          onChange={setFullName}
+        />
         {role === "doctor" && (
           <Field label="Clinic name" placeholder="Mehta Homeopathy Clinic" value={clinicName} onChange={setClinicName} />
         )}
-        <Field label="Email" type="email" placeholder="you@clinic.com" autoComplete="email" value={email} onChange={setEmail} />
+        <Field
+          label="Email"
+          type="email"
+          placeholder={role === "doctor" ? "you@clinic.com" : "you@example.com"}
+          autoComplete="email"
+          value={email}
+          onChange={setEmail}
+        />
         <Field label="Phone (WhatsApp)" type="tel" placeholder="+91 98765 43210" autoComplete="tel" value={phone} onChange={setPhone} />
         <Field label="Password" type="password" placeholder="At least 8 characters" autoComplete="new-password" value={password} onChange={setPassword} />
         <PrimaryButton disabled={busy}>
