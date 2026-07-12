@@ -97,6 +97,17 @@ ${marker}
   await writeFile(filePath, source);
 }
 
+async function rewriteServerAssetUrls(filePath) {
+  const source = await readFile(filePath, "utf8");
+  const rewritten = source
+    .replaceAll('"/assets/', '"/app-assets/')
+    .replaceAll("'/assets/", "'/app-assets/");
+
+  if (rewritten !== source) {
+    await writeFile(filePath, rewritten);
+  }
+}
+
 await rm(distDir, { recursive: true, force: true });
 await mkdir(serverDir, { recursive: true });
 await mkdir(publicDir, { recursive: true });
@@ -105,5 +116,7 @@ await cp(join(outputDir, "public"), publicDir, { recursive: true });
 await copyFile(join(serverDir, "index.mjs"), join(serverDir, "index.js"));
 
 const assets = await collectAssets(publicDir);
+await rewriteServerAssetUrls(join(serverDir, "index.js"));
+await rewriteServerAssetUrls(join(serverDir, "index.mjs"));
 await patchWorker(join(serverDir, "index.js"), assets);
 await patchWorker(join(serverDir, "index.mjs"), assets);
