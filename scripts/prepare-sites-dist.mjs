@@ -46,6 +46,14 @@ async function collectAssets(dir) {
         type: contentTypes.get(extname(filePath).toLowerCase()) ?? "application/octet-stream",
         data: data.toString("base64"),
       });
+
+      if (urlPath.startsWith("/assets/")) {
+        entries.push({
+          path: urlPath.replace("/assets/", "/app-assets/"),
+          type: contentTypes.get(extname(filePath).toLowerCase()) ?? "application/octet-stream",
+          data: data.toString("base64"),
+        });
+      }
     }
   }
 
