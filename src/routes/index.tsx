@@ -39,10 +39,7 @@ function Index() {
               Built for homeopathy clinics
             </span>
             <h1 className="text-4xl font-extrabold leading-tight tracking-tight text-foreground sm:text-5xl md:text-6xl">
-              Calm, modern care
-              <span className="block bg-gradient-primary bg-clip-text text-transparent">
-                for every patient.
-              </span>
+              Calm, modern care for every patient.
             </h1>
             <p className="mx-auto max-w-md text-base text-muted-foreground md:mx-0 md:text-lg">
               HomeoCare helps small homeopathy clinics run patients, appointments,
