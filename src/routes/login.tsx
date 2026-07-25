@@ -16,6 +16,15 @@ export const Route = createFileRoute("/login")({
   }),
 });
 
+function safeNext(): string | null {
+  if (typeof window === "undefined") return null;
+  const raw = new URLSearchParams(window.location.search).get("next");
+  if (!raw) return null;
+  // Only allow same-origin relative paths
+  if (!raw.startsWith("/") || raw.startsWith("//")) return null;
+  return raw;
+}
+
 function LoginPage() {
   const navigate = useNavigate();
   const { user, role, loading: authLoading } = useAuth();
@@ -26,6 +35,11 @@ function LoginPage() {
 
   useEffect(() => {
     if (!authLoading && user) {
+      const next = safeNext();
+      if (next) {
+        window.location.href = next;
+        return;
+      }
       navigate({ to: role === "patient" ? "/app/patient" : "/app" });
     }
   }, [authLoading, user, role, navigate]);
@@ -44,15 +58,20 @@ function LoginPage() {
 
   const onGoogle = async () => {
     setBusy(true);
+    const next = safeNext();
+    const redirectTo = next
+      ? `${window.location.origin}${next}`
+      : window.location.origin;
     const { error } = await supabase.auth.signInWithOAuth({
       provider: "google",
-      options: { redirectTo: window.location.origin },
+      options: { redirectTo },
     });
     if (error) {
       setBusy(false);
       toast.error(error.message);
     }
   };
+
 
   return (
     <AuthShell
