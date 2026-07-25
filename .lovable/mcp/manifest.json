@@ -1,0 +1,200 @@
+{
+  "version": 1,
+  "sdk_version": "0.24.0",
+  "path": "/mcp",
+  "auth": {
+    "type": "oauth",
+    "issuer": "https://aizjnxylpennrllspohi.supabase.co/auth/v1",
+    "accepted_audiences": [
+      "authenticated"
+    ]
+  },
+  "mcp": {
+    "server": {
+      "name": "homeocare-mcp",
+      "version": "0.1.0",
+      "title": "HomeoCare MCP"
+    },
+    "tools": [
+      {
+        "name": "list_patients",
+        "title": "List patients",
+        "description": "List patients in the signed-in doctor's clinic. Optionally filter by a name or phone search term.",
+        "annotations": {
+          "readOnlyHint": true,
+          "idempotentHint": true,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "$schema": "http://json-schema.org/draft-07/schema#",
+          "type": "object",
+          "properties": {
+            "search": {
+              "description": "Optional name or phone substring.",
+              "type": "string"
+            },
+            "limit": {
+              "description": "Max rows (default 25).",
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100
+            }
+          }
+        },
+        "outputSchema": null
+      },
+      {
+        "name": "get_patient",
+        "title": "Get patient",
+        "description": "Get one patient's profile and their visit history (chief complaint, prescription, follow-up).",
+        "annotations": {
+          "readOnlyHint": true,
+          "idempotentHint": true,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "$schema": "http://json-schema.org/draft-07/schema#",
+          "type": "object",
+          "properties": {
+            "patient_id": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$",
+              "description": "Patient UUID."
+            }
+          },
+          "required": [
+            "patient_id"
+          ]
+        },
+        "outputSchema": null
+      },
+      {
+        "name": "list_appointments",
+        "title": "List appointments",
+        "description": "List appointments in the signed-in doctor's clinic within a date range. Defaults to today and the next 7 days.",
+        "annotations": {
+          "readOnlyHint": true,
+          "idempotentHint": true,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "$schema": "http://json-schema.org/draft-07/schema#",
+          "type": "object",
+          "properties": {
+            "from": {
+              "description": "ISO date/time lower bound (inclusive).",
+              "type": "string"
+            },
+            "to": {
+              "description": "ISO date/time upper bound (exclusive).",
+              "type": "string"
+            },
+            "status": {
+              "description": "Filter by status.",
+              "type": "string",
+              "enum": [
+                "scheduled",
+                "confirmed",
+                "completed",
+                "cancelled",
+                "no_show"
+              ]
+            }
+          }
+        },
+        "outputSchema": null
+      },
+      {
+        "name": "create_appointment",
+        "title": "Create appointment",
+        "description": "Book a new appointment for a patient in the signed-in doctor's clinic.",
+        "annotations": {
+          "readOnlyHint": false,
+          "destructiveHint": false,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "$schema": "http://json-schema.org/draft-07/schema#",
+          "type": "object",
+          "properties": {
+            "patient_id": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            },
+            "scheduled_at": {
+              "type": "string",
+              "description": "ISO date-time for the appointment."
+            },
+            "duration_minutes": {
+              "type": "integer",
+              "minimum": 5,
+              "maximum": 480
+            },
+            "reason": {
+              "type": "string"
+            },
+            "notes": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "patient_id",
+            "scheduled_at"
+          ]
+        },
+        "outputSchema": null
+      },
+      {
+        "name": "list_follow_ups",
+        "title": "List follow-ups",
+        "description": "List patient visits with an upcoming or overdue follow-up date in the signed-in doctor's clinic.",
+        "annotations": {
+          "readOnlyHint": true,
+          "idempotentHint": true,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "$schema": "http://json-schema.org/draft-07/schema#",
+          "type": "object",
+          "properties": {
+            "window": {
+              "description": "Which follow-up bucket to return (default: upcoming).",
+              "type": "string",
+              "enum": [
+                "due_today",
+                "upcoming",
+                "missed"
+              ]
+            }
+          }
+        },
+        "outputSchema": null
+      },
+      {
+        "name": "list_remedies",
+        "title": "List remedies",
+        "description": "List remedies in the clinic's inventory, optionally only low-stock items.",
+        "annotations": {
+          "readOnlyHint": true,
+          "idempotentHint": true,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "$schema": "http://json-schema.org/draft-07/schema#",
+          "type": "object",
+          "properties": {
+            "low_stock_only": {
+              "type": "boolean"
+            },
+            "search": {
+              "type": "string"
+            }
+          }
+        },
+        "outputSchema": null
+      }
+    ]
+  }
+}
