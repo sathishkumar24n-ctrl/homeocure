@@ -104,6 +104,11 @@ function LoginPage() {
           value={password}
           onChange={setPassword}
         />
+        <div className="-mt-2 text-right">
+          <Link to="/reset-password" className="text-sm font-semibold text-primary hover:underline">
+            Forgot password?
+          </Link>
+        </div>
         <PrimaryButton disabled={busy}>
           {busy ? <Loader2 className="mx-auto h-4 w-4 animate-spin" /> : "Sign in"}
         </PrimaryButton>

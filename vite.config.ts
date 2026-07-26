@@ -14,6 +14,7 @@ export default defineConfig({
     server: { entry: "server" },
   },
   vite: {
-    plugins: [mcpPlugin()],
+    // The MCP plugin currently compares mixed slash/backslash paths on Windows.
+    plugins: process.platform === "win32" ? [] : [mcpPlugin()],
   },
 });
