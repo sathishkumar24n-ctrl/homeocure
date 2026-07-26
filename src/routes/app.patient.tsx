@@ -266,7 +266,7 @@ function PatientHome() {
                         </div>
                         <div className="min-w-0 flex-1">
                           <div className="flex flex-wrap items-baseline gap-x-2">
-                            <p className="font-semibold text-foreground">{v.prescription}</p>
+                            <p className="font-semibold text-foreground">Medicines dispensed</p>
                             <p className="text-xs text-muted-foreground">
                               {new Date(v.visit_date as string).toLocaleDateString(undefined, {
                                 month: "short",
@@ -282,7 +282,6 @@ function PatientHome() {
                             {clinicName}
                             {v.chief_complaint ? ` · ${v.chief_complaint}` : ""}
                           </p>
-                          {v.notes && <p className="mt-1 text-sm text-foreground/70">{v.notes}</p>}
                         </div>
                       </div>
                     </div>

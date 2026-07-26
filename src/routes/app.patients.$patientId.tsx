@@ -1,6 +1,6 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   ArrowLeft,
   CalendarCheck,
@@ -40,6 +40,7 @@ function PatientDetailPage() {
     () => getVisitLinkParams().appointmentId,
   );
   const [showAppointment, setShowAppointment] = useState(false);
+  const [printVisit, setPrintVisit] = useState<any | null>(null);
   const [visitSearch, setVisitSearch] = useState("");
   const [whatsappKind, setWhatsappKind] = useState<WhatsAppMessageKind>("followUp");
 
@@ -118,6 +119,19 @@ function PatientDetailPage() {
     onError: (e: Error) => toast.error(e.message),
   });
 
+  useEffect(() => {
+    if (!printVisit) return;
+
+    const clearPrintVisit = () => setPrintVisit(null);
+    window.addEventListener("afterprint", clearPrintVisit, { once: true });
+    const timer = window.setTimeout(() => window.print(), 75);
+
+    return () => {
+      window.clearTimeout(timer);
+      window.removeEventListener("afterprint", clearPrintVisit);
+    };
+  }, [printVisit]);
+
   if (patientQ.isLoading) {
     return <div className="p-8 text-center text-sm text-muted-foreground">Loading…</div>;
   }
@@ -155,6 +169,14 @@ function PatientDetailPage() {
   const whatsappHref = p.phone ? buildWhatsAppHref(p.phone, whatsappMessage) : undefined;
   return (
     <div className="mx-auto max-w-3xl px-4 py-6">
+      {printVisit && (
+        <PrintablePrescription
+          patientName={p.full_name}
+          clinicName={clinic?.name}
+          visit={printVisit}
+        />
+      )}
+
       <Link
         to="/app/patients"
         className="mb-4 inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground"
@@ -343,7 +365,7 @@ function PatientDetailPage() {
             <p className="mt-2 text-sm text-muted-foreground">No visits match that search.</p>
           </div>
         ) : (
-          filteredVisits.map((v) => <VisitCard key={v.id} visit={v} patientName={p.full_name} />)
+          filteredVisits.map((v) => <VisitCard key={v.id} visit={v} onPrint={setPrintVisit} />)
         )}
       </div>
 
@@ -565,7 +587,7 @@ function AppointmentCard({ appointment }: { appointment: any }) {
   );
 }
 
-function VisitCard({ visit, patientName }: { visit: any; patientName: string }) {
+function VisitCard({ visit, onPrint }: { visit: any; onPrint: (visit: any) => void }) {
   return (
     <div className="rounded-2xl border border-border/60 bg-card p-4 shadow-card">
       <div className="flex flex-wrap items-center justify-between gap-2">
@@ -584,7 +606,7 @@ function VisitCard({ visit, patientName }: { visit: any; patientName: string }) 
           )}
         </div>
         <button
-          onClick={() => printVisitSummary(patientName, visit)}
+          onClick={() => onPrint(visit)}
           className="inline-flex items-center gap-1.5 rounded-full border border-border bg-card px-3 py-1.5 text-xs font-semibold text-foreground transition-smooth hover:bg-muted"
         >
           <Printer className="h-3.5 w-3.5" /> Print
@@ -605,6 +627,136 @@ function VisitCard({ visit, patientName }: { visit: any; patientName: string }) 
       </div>
     </div>
   );
+}
+
+function PrintablePrescription({
+  patientName,
+  clinicName,
+  visit,
+}: {
+  patientName: string;
+  clinicName?: string | null;
+  visit: any;
+}) {
+  const medicineCount = countDispensedMedicines(visit.prescription);
+  const medicines = Array.from({ length: medicineCount }, (_, i) => `Medicine ${i + 1}`);
+
+  return (
+    <>
+      <style>{`
+        @media screen {
+          #print-prescription-root {
+            display: none;
+          }
+        }
+
+        @media print {
+          @page {
+            margin: 14mm;
+          }
+
+          body * {
+            visibility: hidden !important;
+          }
+
+          #print-prescription-root,
+          #print-prescription-root * {
+            visibility: visible !important;
+          }
+
+          #print-prescription-root {
+            display: block !important;
+            position: absolute;
+            inset: 0 auto auto 0;
+            width: 100%;
+            padding: 0;
+            color: #111827;
+            background: white;
+            font-family: Arial, sans-serif;
+          }
+        }
+      `}</style>
+      <div id="print-prescription-root">
+        <div style={{ borderBottom: "2px solid #047857", paddingBottom: 14, marginBottom: 18 }}>
+          <div style={{ fontSize: 24, fontWeight: 700 }}>{clinicName || "HomeoCare"}</div>
+          <div style={{ marginTop: 4, color: "#4b5563", fontSize: 13 }}>
+            Homeopathy prescription and patient instructions
+          </div>
+        </div>
+
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginBottom: 20 }}>
+          <PrintBox label="Patient" value={patientName} />
+          <PrintBox label="Date" value={formatDate(visit.visit_date)} />
+          {visit.chief_complaint && <PrintBox label="Complaint" value={visit.chief_complaint} />}
+          {visit.next_follow_up && (
+            <PrintBox label="Next follow-up" value={formatDate(visit.next_follow_up)} />
+          )}
+        </div>
+
+        <div style={{ border: "1px solid #d1d5db", borderRadius: 10, overflow: "hidden" }}>
+          <div style={{ background: "#ecfdf5", padding: "10px 12px", fontWeight: 700 }}>
+            Medicines Dispensed
+          </div>
+          <div style={{ padding: 12 }}>
+            {medicines.map((medicine) => (
+              <div
+                key={medicine}
+                style={{
+                  borderBottom: "1px solid #e5e7eb",
+                  padding: "10px 0",
+                  fontSize: 15,
+                  fontWeight: 700,
+                }}
+              >
+                {medicine}
+              </div>
+            ))}
+            {visit.dosage && (
+              <div style={{ paddingTop: 12 }}>
+                <div style={{ color: "#6b7280", fontSize: 11, fontWeight: 700 }}>DIRECTIONS</div>
+                <div style={{ marginTop: 4, whiteSpace: "pre-wrap", lineHeight: 1.5 }}>
+                  {visit.dosage}
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+
+        <div style={{ marginTop: 36, display: "flex", justifyContent: "space-between" }}>
+          <div style={{ color: "#6b7280", fontSize: 12 }}>
+            Remedy names are kept in the clinic record.
+          </div>
+          <div
+            style={{
+              borderTop: "1px solid #9ca3af",
+              minWidth: 180,
+              paddingTop: 8,
+              textAlign: "center",
+            }}
+          >
+            Doctor signature
+          </div>
+        </div>
+      </div>
+    </>
+  );
+}
+
+function PrintBox({ label, value }: { label: string; value: string }) {
+  return (
+    <div style={{ border: "1px solid #e5e7eb", borderRadius: 8, padding: 10 }}>
+      <div style={{ color: "#6b7280", fontSize: 11, fontWeight: 700 }}>{label.toUpperCase()}</div>
+      <div style={{ marginTop: 4, fontSize: 14 }}>{value}</div>
+    </div>
+  );
+}
+
+function countDispensedMedicines(prescription?: string | null) {
+  const parts = (prescription ?? "")
+    .split(/\n|;|,/)
+    .map((part) => part.trim())
+    .filter(Boolean);
+  return Math.max(1, Math.min(parts.length || 1, 12));
 }
 
 function Field({ label, value }: { label: string; value: string }) {
@@ -678,12 +830,11 @@ function buildWhatsAppMessage({
   }
 
   if (kind === "medicine") {
-    const prescription = latestVisit?.prescription?.trim();
     const dosage = latestVisit?.dosage?.trim();
     const followUp = latestVisit?.next_follow_up
       ? ` Your next follow-up is on ${formatDate(latestVisit.next_follow_up)}.`
       : "";
-    return `Hi ${name}, medicine instructions from ${clinic}: ${prescription || "please continue the medicine as advised"}${dosage ? `, ${dosage}` : ""}.${followUp} Reply if symptoms change or you need clarification.`;
+    return `Hi ${name}, medicine instructions from ${clinic}: please take the medicines dispensed by the clinic as advised${dosage ? `, ${dosage}` : ""}.${followUp} Reply if symptoms change or you need clarification.`;
   }
 
   if (kind === "review") {
@@ -699,71 +850,6 @@ function buildWhatsAppMessage({
 
 function firstName(name: string) {
   return name.trim().split(/\s+/)[0] || "there";
-}
-
-function printVisitSummary(patientName: string, visit: any) {
-  const rows = [
-    ["Visit date", formatDate(visit.visit_date)],
-    ["Chief complaint", visit.chief_complaint],
-    ["Symptoms", visit.symptoms],
-    ["Constitution", visit.constitution],
-    ["Miasm", visit.miasm],
-    ["Modalities", visit.modalities],
-    ["Prescription", visit.prescription],
-    ["Dosage", visit.dosage],
-    ["Next follow-up", visit.next_follow_up ? formatDate(visit.next_follow_up) : null],
-    ["Fee", visit.fee != null ? `INR ${Number(visit.fee).toFixed(2)}` : null],
-    ["Notes", visit.notes],
-  ].filter(([, value]) => value != null && String(value).trim().length > 0);
-
-  const html = `<!doctype html>
-    <html>
-      <head>
-        <title>${escapeHtml(patientName)} - Visit Summary</title>
-        <style>
-          body { font-family: Arial, sans-serif; color: #1f2937; margin: 32px; }
-          h1 { font-size: 22px; margin: 0 0 4px; }
-          h2 { font-size: 14px; color: #047857; margin: 0 0 24px; }
-          .row { border-top: 1px solid #e5e7eb; padding: 12px 0; }
-          .label { color: #6b7280; font-size: 11px; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; }
-          .value { margin-top: 4px; white-space: pre-wrap; line-height: 1.45; }
-          .footer { margin-top: 32px; color: #6b7280; font-size: 12px; }
-        </style>
-      </head>
-      <body>
-        <h1>${escapeHtml(patientName)}</h1>
-        <h2>HomeoCare Visit Summary</h2>
-        ${rows
-          .map(
-            ([label, value]) => `
-              <div class="row">
-                <div class="label">${escapeHtml(String(label))}</div>
-                <div class="value">${escapeHtml(String(value))}</div>
-              </div>
-            `,
-          )
-          .join("")}
-        <div class="footer">Generated from HomeoCare on ${escapeHtml(formatDate(new Date().toISOString()))}</div>
-        <script>window.print();</script>
-      </body>
-    </html>`;
-
-  const win = window.open("", "_blank", "noopener,noreferrer");
-  if (!win) {
-    toast.error("Pop-up blocked. Allow pop-ups to print visit summaries.");
-    return;
-  }
-  win.document.write(html);
-  win.document.close();
-}
-
-function escapeHtml(value: string) {
-  return value
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;")
-    .replace(/"/g, "&quot;")
-    .replace(/'/g, "&#039;");
 }
 
 function toLocalInput(d: Date) {
