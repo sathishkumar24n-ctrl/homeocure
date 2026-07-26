@@ -77,8 +77,13 @@ function DigitalPrescriptionPage() {
         visit={{
           visit_date: row.visit_date,
           chief_complaint: row.chief_complaint,
+          symptoms: row.symptoms,
+          constitution: row.constitution,
+          miasm: row.miasm,
+          modalities: row.modalities,
           dosage: row.dosage,
           next_follow_up: row.next_follow_up,
+          notes: row.notes,
           prescription: row.prescription,
           medicine_count: row.medicine_count,
         }}

@@ -24,8 +24,13 @@ type PatientDetails = {
 type VisitPrescription = {
   visit_date?: string | null;
   chief_complaint?: string | null;
+  symptoms?: string | null;
+  constitution?: string | null;
+  miasm?: string | null;
+  modalities?: string | null;
   dosage?: string | null;
   next_follow_up?: string | null;
+  notes?: string | null;
   prescription?: string | null;
   medicine_count?: number | null;
 };
@@ -45,10 +50,8 @@ export function PrescriptionTemplate({
 }) {
   const showMedicineNames = clinic.show_medicine_names_on_prescription === true;
   const medicines = prescriptionRows(visit.prescription, visit.medicine_count, showMedicineNames);
-  const rows = [
-    ...medicines,
-    ...Array.from({ length: Math.max(0, 5 - medicines.length) }, () => ""),
-  ];
+  const diagnosis = clinicalDiagnosis(visit);
+  const advice = visit.notes?.trim();
 
   return (
     <>
@@ -92,51 +95,57 @@ export function PrescriptionTemplate({
 
           <section className="rx-section">
             <div className="rx-line-title">Chief Complaint / Presenting Complaints</div>
-            <div className="rx-writing-lines">{visit.chief_complaint || ""}</div>
+            <div className="rx-writing-lines">{compactText(visit.chief_complaint)}</div>
           </section>
 
           <section className="rx-section">
             <div className="rx-line-title">Clinical Diagnosis</div>
-            <div className="rx-writing-lines" />
+            <div className="rx-writing-lines">{diagnosis}</div>
           </section>
 
-          <section className="rx-table-wrap">
-            <div className="rx-tab">Rx</div>
-            <table className="rx-table">
-              <thead>
-                <tr>
-                  <th>S. No.</th>
-                  <th>Medicine / Bottle No. (Code)</th>
-                  <th>Potency</th>
-                  <th>Dose</th>
-                  <th>Frequency</th>
-                  <th>Duration</th>
-                </tr>
-              </thead>
-              <tbody>
-                {rows.map((medicine, index) => (
-                  <tr key={`${medicine}-${index}`}>
-                    <td>{index + 1}.</td>
-                    <td>{medicine}</td>
-                    <td />
-                    <td>{index === 0 ? visit.dosage || "As advised" : ""}</td>
-                    <td />
-                    <td />
+          {medicines.length > 0 && (
+            <section className="rx-table-wrap">
+              <div className="rx-tab">Rx</div>
+              <table className="rx-table">
+                <thead>
+                  <tr>
+                    <th>S. No.</th>
+                    <th>Medicine / Bottle No. (Code)</th>
+                    <th>Potency</th>
+                    <th>Dose</th>
+                    <th>Frequency</th>
+                    <th>Duration</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
-          </section>
+                </thead>
+                <tbody>
+                  {medicines.map((medicine, index) => (
+                    <tr key={`${medicine}-${index}`}>
+                      <td>{index + 1}.</td>
+                      <td>{medicine}</td>
+                      <td />
+                      <td>{index === 0 ? visit.dosage || "As advised" : ""}</td>
+                      <td />
+                      <td />
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </section>
+          )}
 
           <section className="rx-bottom-grid">
             <div>
               <div className="rx-line-title">Advice</div>
-              {["Diet Advice", "Water Intake", "Sleep", "Exercise", "Avoid", "Other"].map(
-                (label) => (
-                  <div key={label} className="rx-check-line">
-                    <span className="rx-box" /> {label}
-                  </div>
-                ),
+              {advice ? (
+                <div className="rx-advice-text">{advice}</div>
+              ) : (
+                ["Diet Advice", "Water Intake", "Sleep", "Exercise", "Avoid", "Other"].map(
+                  (label) => (
+                    <div key={label} className="rx-check-line">
+                      <span className="rx-box" /> {label}
+                    </div>
+                  ),
+                )
               )}
             </div>
             <div>
@@ -239,7 +248,7 @@ function PrescriptionStyles() {
         position: relative;
         box-sizing: border-box;
         max-width: 794px;
-        min-height: 1123px;
+        min-height: 1118px;
         margin: 0 auto;
         overflow: hidden;
         border: 2px solid #0759a5;
@@ -251,8 +260,8 @@ function PrescriptionStyles() {
         display: grid;
         grid-template-columns: 1fr 1fr;
         gap: 42px;
-        min-height: 190px;
-        padding: 28px 38px 24px;
+        min-height: 178px;
+        padding: 24px 38px 20px;
         border-bottom: 3px solid #0759a5;
       }
 
@@ -300,12 +309,12 @@ function PrescriptionStyles() {
       }
 
       .rx-section {
-        padding: 18px 30px 0;
+        padding: 14px 30px 0;
       }
 
       .rx-section-title {
         display: inline-block;
-        margin-bottom: 16px;
+        margin-bottom: 12px;
         border-radius: 4px;
         background: linear-gradient(180deg, #126fc4 0%, #0759a5 100%);
         color: white;
@@ -319,7 +328,7 @@ function PrescriptionStyles() {
       .rx-grid {
         display: grid;
         grid-template-columns: 1fr 1.3fr 0.9fr;
-        gap: 15px 28px;
+        gap: 12px 28px;
       }
 
       .rx-line {
@@ -332,7 +341,7 @@ function PrescriptionStyles() {
       }
 
       .rx-line strong {
-        min-height: 23px;
+        min-height: 21px;
         border-bottom: 1px solid #374151;
         font-weight: 500;
         word-break: break-word;
@@ -361,8 +370,8 @@ function PrescriptionStyles() {
       }
 
       .rx-writing-lines {
-        min-height: 54px;
-        margin-top: 12px;
+        min-height: 42px;
+        margin-top: 9px;
         white-space: pre-wrap;
         border-bottom: 1px solid #374151;
         box-shadow: 0 26px 0 -25px #374151;
@@ -370,7 +379,7 @@ function PrescriptionStyles() {
 
       .rx-table-wrap {
         position: relative;
-        margin: 24px 22px 0;
+        margin: 18px 22px 0;
         border: 2px solid #0759a5;
         border-radius: 8px;
         overflow: hidden;
@@ -380,7 +389,7 @@ function PrescriptionStyles() {
         width: 92px;
         background: linear-gradient(180deg, #126fc4 0%, #0759a5 100%);
         color: white;
-        padding: 9px 22px;
+        padding: 7px 22px;
         font-size: 20px;
         font-weight: 800;
       }
@@ -394,13 +403,13 @@ function PrescriptionStyles() {
       .rx-table th {
         background: linear-gradient(180deg, #126fc4 0%, #0759a5 100%);
         color: white;
-        padding: 10px 6px;
+        padding: 8px 6px;
         text-align: center;
         text-transform: uppercase;
       }
 
       .rx-table td {
-        height: 38px;
+        height: 32px;
         border: 1px solid #8ab4e8;
         padding: 6px 8px;
       }
@@ -413,8 +422,21 @@ function PrescriptionStyles() {
       .rx-bottom-grid {
         display: grid;
         grid-template-columns: 1fr 1fr;
-        gap: 44px;
-        padding: 22px 30px;
+        gap: 40px;
+        padding: 18px 30px;
+      }
+
+      .rx-advice-text {
+        min-height: 120px;
+        margin-top: 12px;
+        white-space: pre-wrap;
+        border-bottom: 1px solid #9ca3af;
+        box-shadow:
+          0 25px 0 -24px #9ca3af,
+          0 50px 0 -49px #9ca3af,
+          0 75px 0 -74px #9ca3af,
+          0 100px 0 -99px #9ca3af;
+        font-size: 13px;
       }
 
       .rx-check-line {
@@ -433,7 +455,7 @@ function PrescriptionStyles() {
       }
 
       .rx-instructions {
-        margin-top: 18px;
+        margin-top: 14px;
         border: 1px solid #8ab4e8;
         border-radius: 8px;
         padding: 13px 14px;
@@ -459,7 +481,7 @@ function PrescriptionStyles() {
         justify-content: space-between;
         gap: 22px;
         border-top: 1px solid #c7dbf5;
-        padding: 18px 28px 48px;
+        padding: 14px 28px 42px;
       }
 
       .rx-verify {
@@ -525,10 +547,72 @@ function PrescriptionStyles() {
       }
 
       @media screen and (max-width: 860px) {
+        .prescription-sheet {
+          padding: 0;
+        }
+
         .rx-frame {
-          transform: scale(0.72);
-          transform-origin: top center;
-          margin-bottom: -300px;
+          width: 100%;
+          max-width: 100%;
+          min-height: auto;
+          border-width: 1px;
+          box-shadow: none;
+        }
+
+        .rx-header,
+        .rx-grid,
+        .rx-bottom-grid {
+          grid-template-columns: 1fr;
+        }
+
+        .rx-header {
+          gap: 18px;
+          padding: 18px;
+        }
+
+        .rx-logo-box {
+          width: 140px;
+          height: 112px;
+        }
+
+        .rx-doctor {
+          border-left: 0;
+          border-top: 2px solid #75a9dd;
+          padding: 14px 0 0;
+        }
+
+        .rx-doctor-name {
+          font-size: 24px;
+        }
+
+        .rx-section,
+        .rx-bottom-grid {
+          padding-right: 16px;
+          padding-left: 16px;
+        }
+
+        .rx-wide {
+          grid-column: auto;
+        }
+
+        .rx-table-wrap {
+          margin-right: 10px;
+          margin-left: 10px;
+          overflow-x: auto;
+        }
+
+        .rx-table {
+          min-width: 620px;
+        }
+
+        .rx-footer {
+          flex-direction: column;
+          align-items: stretch;
+          padding: 14px 16px 34px;
+        }
+
+        .rx-signature {
+          min-width: 0;
         }
       }
 
@@ -553,31 +637,40 @@ function PrescriptionStyles() {
   );
 }
 
-function countDispensedMedicines(prescription?: string | null, explicitCount?: number | null) {
-  if (explicitCount && explicitCount > 0) return Math.min(explicitCount, 12);
-  const parts = (prescription ?? "")
-    .split(/\n|;|,/)
-    .map((part) => part.trim())
-    .filter(Boolean);
-  return Math.max(1, Math.min(parts.length || 1, 12));
-}
-
 function prescriptionRows(
   prescription?: string | null,
   explicitCount?: number | null,
   showMedicineNames?: boolean,
 ) {
-  const count = countDispensedMedicines(prescription, explicitCount);
   const parsedNames = (prescription ?? "")
     .split(/\n|;|,/)
     .map((part) => part.trim())
     .filter(Boolean)
     .slice(0, 12);
+  const count = explicitCount
+    ? Math.min(explicitCount, 12)
+    : Math.min(parsedNames.length, 12);
+  if (count <= 0) return [];
 
   return Array.from({ length: count }, (_, index) => {
     if (showMedicineNames && parsedNames[index]) return parsedNames[index];
     return `Medicine ${index + 1}`;
   });
+}
+
+function clinicalDiagnosis(visit: VisitPrescription) {
+  return [
+    visit.symptoms && `Symptoms: ${compactText(visit.symptoms)}`,
+    visit.constitution && `Constitution: ${compactText(visit.constitution)}`,
+    visit.miasm && `Miasm: ${compactText(visit.miasm)}`,
+    visit.modalities && `Modalities: ${compactText(visit.modalities)}`,
+  ]
+    .filter(Boolean)
+    .join("\n");
+}
+
+function compactText(value?: string | null) {
+  return value?.trim().replace(/\n{3,}/g, "\n\n") ?? "";
 }
 
 function qrCodeUrl(value: string) {

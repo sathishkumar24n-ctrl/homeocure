@@ -498,11 +498,15 @@ export type Database = {
           clinic_email: string | null;
           clinic_name: string | null;
           clinic_phone: string | null;
+          constitution: string | null;
           doctor_name: string | null;
           dosage: string | null;
           logo_data_url: string | null;
           medicine_count: number;
+          miasm: string | null;
+          modalities: string | null;
           next_follow_up: string | null;
+          notes: string | null;
           patient_address: string | null;
           patient_date_of_birth: string | null;
           patient_gender: string | null;
@@ -514,6 +518,7 @@ export type Database = {
           registration_no: string | null;
           show_medicine_names_on_prescription: boolean;
           signature_data_url: string | null;
+          symptoms: string | null;
           visit_date: string;
         }[];
       };
