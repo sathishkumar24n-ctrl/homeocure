@@ -1,7 +1,16 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useMemo, useState } from "react";
-import { CalendarCheck, CalendarClock, CalendarPlus, Clock, Pencil, Trash2 } from "lucide-react";
+import {
+  CalendarCheck,
+  CalendarClock,
+  CalendarPlus,
+  Clock,
+  FileText,
+  Pencil,
+  Stethoscope,
+  Trash2,
+} from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { useClinic } from "@/hooks/use-clinic";
@@ -83,7 +92,7 @@ function todayBounds() {
 
 function defaultDraft(clinicId: string): Partial<Appointment> {
   const now = new Date();
-  now.setMinutes(now.getMinutes() - now.getMinutes() % 15 + 15, 0, 0);
+  now.setMinutes(now.getMinutes() - (now.getMinutes() % 15) + 15, 0, 0);
   return {
     clinic_id: clinicId,
     patient_id: "",
@@ -142,7 +151,10 @@ function AppointmentsPage() {
         if (pErr) throw pErr;
         patientMap = new Map((pats ?? []).map((p) => [p.id, p]));
       }
-      return rows.map((r) => ({ ...r, patient: patientMap.get(r.patient_id) ?? null })) as AppointmentRow[];
+      return rows.map((r) => ({
+        ...r,
+        patient: patientMap.get(r.patient_id) ?? null,
+      })) as AppointmentRow[];
     },
   });
 
@@ -153,8 +165,9 @@ function AppointmentsPage() {
     const past: AppointmentRow[] = [];
     for (const a of appointments ?? []) {
       const t = new Date(a.scheduled_at);
-      if (t >= start && t < end) today.push(a);
-      else if (t >= end) upcoming.push(a);
+      const isOpen = a.status === "scheduled";
+      if (isOpen && t >= start && t < end) today.push(a);
+      else if (isOpen && t >= end) upcoming.push(a);
       else past.push(a);
     }
     past.reverse();
@@ -272,10 +285,17 @@ function AppointmentsPage() {
             key={t}
             onClick={() => setTab(t)}
             className={`rounded-full px-4 py-1.5 capitalize transition-smooth ${
-              tab === t ? "bg-primary text-primary-foreground shadow-soft" : "text-muted-foreground hover:text-foreground"
+              tab === t
+                ? "bg-primary text-primary-foreground shadow-soft"
+                : "text-muted-foreground hover:text-foreground"
             }`}
           >
-            {t} {t === "today" ? `(${todayList.length})` : t === "upcoming" ? `(${upcomingList.length})` : ""}
+            {t}{" "}
+            {t === "today"
+              ? `(${todayList.length})`
+              : t === "upcoming"
+                ? `(${upcomingList.length})`
+                : ""}
           </button>
         ))}
       </div>
@@ -290,7 +310,11 @@ function AppointmentsPage() {
             <CalendarCheck className="h-6 w-6" />
           </div>
           <p className="mt-3 text-sm font-medium text-foreground">
-            {tab === "today" ? "No appointments today" : tab === "upcoming" ? "Nothing upcoming" : "No past appointments"}
+            {tab === "today"
+              ? "No appointments today"
+              : tab === "upcoming"
+                ? "Nothing upcoming"
+                : "No past appointments"}
           </p>
           <p className="mt-1 text-xs text-muted-foreground">
             Schedule one to keep your day organised.
@@ -324,19 +348,41 @@ function AppointmentsPage() {
                     ) : (
                       <span className="truncate text-muted-foreground">Unknown patient</span>
                     )}
-                    <span className={`rounded-full px-2 py-0.5 text-[10px] font-medium ${STATUS_STYLES[a.status]}`}>
+                    <span
+                      className={`rounded-full px-2 py-0.5 text-[10px] font-medium ${STATUS_STYLES[a.status]}`}
+                    >
                       {STATUS_LABELS[a.status]}
                     </span>
                   </p>
                   <p className="mt-0.5 flex flex-wrap items-center gap-x-3 gap-y-0.5 text-xs text-muted-foreground">
                     <span className="inline-flex items-center gap-1">
                       <Clock className="h-3 w-3" />
-                      {dt.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })} · {a.duration_minutes} min
+                      {dt.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })} ·{" "}
+                      {a.duration_minutes} min
                     </span>
                     {a.reason && <span className="truncate">· {a.reason}</span>}
                   </p>
                 </div>
-                <div className="flex items-center gap-1">
+                <div className="flex flex-wrap items-center justify-end gap-1">
+                  {a.patient && (
+                    <>
+                      <Link
+                        to="/app/patients/$patientId"
+                        params={{ patientId: a.patient.id }}
+                        className="inline-flex h-8 items-center gap-1 rounded-full border border-border bg-card px-3 text-xs font-semibold text-foreground transition-smooth hover:bg-muted"
+                      >
+                        <FileText className="h-3.5 w-3.5" /> Case
+                      </Link>
+                      {tab === "today" && a.status === "scheduled" && (
+                        <a
+                          href={`/app/patients/${a.patient.id}?newVisit=1&appointmentId=${a.id}`}
+                          className="inline-flex h-8 items-center gap-1 rounded-full bg-gradient-primary px-3 text-xs font-semibold text-primary-foreground shadow-soft"
+                        >
+                          <Stethoscope className="h-3.5 w-3.5" /> Record visit
+                        </a>
+                      )}
+                    </>
+                  )}
                   <Select
                     value={a.status}
                     onValueChange={(v) => setStatus.mutate({ id: a.id, status: v as Status })}
@@ -395,7 +441,11 @@ function AppointmentsPage() {
                   onValueChange={(v) => setEditing({ ...editing, patient_id: v })}
                 >
                   <SelectTrigger id="patient">
-                    <SelectValue placeholder={(patients?.length ?? 0) === 0 ? "Add a patient first" : "Select patient"} />
+                    <SelectValue
+                      placeholder={
+                        (patients?.length ?? 0) === 0 ? "Add a patient first" : "Select patient"
+                      }
+                    />
                   </SelectTrigger>
                   <SelectContent>
                     {(patients ?? []).map((p) => (
@@ -406,7 +456,10 @@ function AppointmentsPage() {
                   </SelectContent>
                 </Select>
                 {(patients?.length ?? 0) === 0 && (
-                  <Link to="/app/patients/new" className="text-xs font-medium text-primary hover:underline">
+                  <Link
+                    to="/app/patients/new"
+                    className="text-xs font-medium text-primary hover:underline"
+                  >
                     + Add a patient
                   </Link>
                 )}

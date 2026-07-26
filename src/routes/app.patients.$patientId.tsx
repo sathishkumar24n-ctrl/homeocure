@@ -35,7 +35,10 @@ function PatientDetailPage() {
   const { data: clinic } = useClinic();
   const navigate = useNavigate();
   const qc = useQueryClient();
-  const [showVisit, setShowVisit] = useState(false);
+  const [showVisit, setShowVisit] = useState(() => getVisitLinkParams().newVisit);
+  const [appointmentToCompleteId, setAppointmentToCompleteId] = useState<string | null>(
+    () => getVisitLinkParams().appointmentId,
+  );
   const [showAppointment, setShowAppointment] = useState(false);
   const [visitSearch, setVisitSearch] = useState("");
   const [whatsappKind, setWhatsappKind] = useState<WhatsAppMessageKind>("followUp");
@@ -79,6 +82,29 @@ function PatientDetailPage() {
     },
   });
 
+  const visits = visitsQ.data ?? [];
+  const appointments = appointmentsQ.data ?? [];
+  const filteredVisits = useMemo(() => {
+    const rows = visitsQ.data ?? [];
+    const term = visitSearch.trim().toLowerCase();
+    if (!term) return rows;
+    return rows.filter((visit) =>
+      [
+        visit.visit_date,
+        visit.chief_complaint,
+        visit.symptoms,
+        visit.constitution,
+        visit.miasm,
+        visit.modalities,
+        visit.prescription,
+        visit.dosage,
+        visit.notes,
+      ]
+        .filter(Boolean)
+        .some((value) => String(value).toLowerCase().includes(term)),
+    );
+  }, [visitsQ.data, visitSearch]);
+
   const deletePatient = useMutation({
     mutationFn: async () => {
       const { error } = await supabase.from("patients").delete().eq("id", patientId);
@@ -104,8 +130,6 @@ function PatientDetailPage() {
   }
 
   const p = patientQ.data;
-  const visits = visitsQ.data ?? [];
-  const appointments = appointmentsQ.data ?? [];
   const latestVisit = visits[0];
   const today = new Date();
   today.setHours(0, 0, 0, 0);
@@ -117,7 +141,7 @@ function PatientDetailPage() {
         new Date(b.next_follow_up as string).getTime(),
     )[0];
   const upcomingAppointments = appointments.filter(
-    (a) => new Date(a.scheduled_at) >= new Date() && a.status !== "cancelled",
+    (a) => new Date(a.scheduled_at) >= new Date() && a.status === "scheduled",
   );
   const nextAppointment = upcomingAppointments[0];
   const whatsappMessage = buildWhatsAppMessage({
@@ -128,29 +152,7 @@ function PatientDetailPage() {
     nextFollowUp,
     nextAppointment,
   });
-  const whatsappHref = p.phone
-    ? buildWhatsAppHref(p.phone, whatsappMessage)
-    : undefined;
-  const filteredVisits = useMemo(() => {
-    const term = visitSearch.trim().toLowerCase();
-    if (!term) return visits;
-    return visits.filter((visit) =>
-      [
-        visit.visit_date,
-        visit.chief_complaint,
-        visit.symptoms,
-        visit.constitution,
-        visit.miasm,
-        visit.modalities,
-        visit.prescription,
-        visit.dosage,
-        visit.notes,
-      ]
-        .filter(Boolean)
-        .some((value) => String(value).toLowerCase().includes(term)),
-    );
-  }, [visits, visitSearch]);
-
+  const whatsappHref = p.phone ? buildWhatsAppHref(p.phone, whatsappMessage) : undefined;
   return (
     <div className="mx-auto max-w-3xl px-4 py-6">
       <Link
@@ -182,6 +184,7 @@ function PatientDetailPage() {
           <div className="flex flex-wrap gap-2 sm:justify-end">
             <button
               onClick={() => {
+                setAppointmentToCompleteId(null);
                 setShowAppointment(false);
                 setShowVisit((v) => !v);
               }}
@@ -248,7 +251,9 @@ function PatientDetailPage() {
       {(p.allergies || p.chronic_conditions || p.notes) && (
         <div className="mt-4 grid gap-3 sm:grid-cols-2">
           {p.allergies && <InfoCard title="Allergies" body={p.allergies} />}
-          {p.chronic_conditions && <InfoCard title="Chronic conditions" body={p.chronic_conditions} />}
+          {p.chronic_conditions && (
+            <InfoCard title="Chronic conditions" body={p.chronic_conditions} />
+          )}
           {p.notes && (
             <div className="sm:col-span-2">
               <InfoCard title="Notes" body={p.notes} />
@@ -266,7 +271,10 @@ function PatientDetailPage() {
           </p>
         </div>
         <button
-          onClick={() => setShowVisit((v) => !v)}
+          onClick={() => {
+            setAppointmentToCompleteId(null);
+            setShowVisit((v) => !v);
+          }}
           className="inline-flex items-center gap-1.5 rounded-full bg-gradient-primary px-3.5 py-2 text-xs font-semibold text-primary-foreground shadow-soft"
         >
           <CalendarPlus className="h-4 w-4" /> {showVisit ? "Close" : "New visit"}
@@ -278,9 +286,17 @@ function PatientDetailPage() {
           patientId={patientId}
           clinicId={p.clinic_id}
           createdBy={user?.id}
+          appointmentToCompleteId={appointmentToCompleteId}
           onDone={() => {
             setShowVisit(false);
+            setAppointmentToCompleteId(null);
+            clearVisitLinkParams();
             qc.invalidateQueries({ queryKey: ["visits", patientId] });
+            qc.invalidateQueries({ queryKey: ["patient-appointments", patientId] });
+            qc.invalidateQueries({ queryKey: ["appointments", p.clinic_id] });
+            qc.invalidateQueries({ queryKey: ["today-appointments-count", p.clinic_id] });
+            qc.invalidateQueries({ queryKey: ["today-appointments", p.clinic_id] });
+            qc.invalidateQueries({ queryKey: ["upcoming-appointments", p.clinic_id] });
           }}
         />
       )}
@@ -398,7 +414,9 @@ function Pill({ icon, children }: { icon: React.ReactNode; children: React.React
 function InfoCard({ title, body }: { title: string; body: string }) {
   return (
     <div className="rounded-2xl border border-border/60 bg-card p-4 shadow-card">
-      <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">{title}</p>
+      <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+        {title}
+      </p>
       <p className="mt-1.5 whitespace-pre-line text-sm text-foreground">{body}</p>
     </div>
   );
@@ -599,7 +617,12 @@ function Field({ label, value }: { label: string; value: string }) {
 }
 
 function initials(name: string) {
-  return name.split(" ").filter(Boolean).slice(0, 2).map((n) => n[0]?.toUpperCase()).join("");
+  return name
+    .split(" ")
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((n) => n[0]?.toUpperCase())
+    .join("");
 }
 
 function formatDate(value?: string | null) {
@@ -748,6 +771,25 @@ function toLocalInput(d: Date) {
   return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
 }
 
+function getVisitLinkParams() {
+  if (typeof window === "undefined") {
+    return { newVisit: false, appointmentId: null as string | null };
+  }
+  const params = new URLSearchParams(window.location.search);
+  return {
+    newVisit: params.get("newVisit") === "1",
+    appointmentId: params.get("appointmentId"),
+  };
+}
+
+function clearVisitLinkParams() {
+  if (typeof window === "undefined") return;
+  const url = new URL(window.location.href);
+  url.searchParams.delete("newVisit");
+  url.searchParams.delete("appointmentId");
+  window.history.replaceState({}, "", `${url.pathname}${url.search}${url.hash}`);
+}
+
 const emptyVisit: VisitInput = {
   visit_date: new Date().toISOString().slice(0, 10),
   chief_complaint: "",
@@ -799,11 +841,13 @@ function NewVisitForm({
   patientId,
   clinicId,
   createdBy,
+  appointmentToCompleteId,
   onDone,
 }: {
   patientId: string;
   clinicId: string;
   createdBy?: string;
+  appointmentToCompleteId?: string | null;
   onDone: () => void;
 }) {
   const [form, setForm] = useState<VisitInput>(emptyVisit);
@@ -837,9 +881,21 @@ function NewVisitForm({
       };
       const { error } = await supabase.from("patient_visits").insert(payload);
       if (error) throw error;
+
+      if (appointmentToCompleteId) {
+        const { error: appointmentError } = await supabase
+          .from("appointments")
+          .update({ status: "completed" })
+          .eq("id", appointmentToCompleteId)
+          .eq("patient_id", patientId)
+          .eq("clinic_id", clinicId);
+        if (appointmentError) throw appointmentError;
+      }
     },
     onSuccess: () => {
-      toast.success("Visit recorded");
+      toast.success(
+        appointmentToCompleteId ? "Visit recorded and appointment completed" : "Visit recorded",
+      );
       setForm(emptyVisit);
       onDone();
     },
@@ -854,6 +910,11 @@ function NewVisitForm({
       }}
       className="mt-4 space-y-3 rounded-2xl border border-border/60 bg-card p-5 shadow-card"
     >
+      {appointmentToCompleteId && (
+        <div className="rounded-2xl border border-primary/20 bg-primary/10 p-3 text-sm text-foreground">
+          Saving this visit will mark the selected appointment as completed.
+        </div>
+      )}
       <FormRow>
         <TextField
           label="Visit date"

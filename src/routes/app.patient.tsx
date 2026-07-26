@@ -17,10 +17,7 @@ import {
 } from "lucide-react";
 import { useAuth } from "@/hooks/use-auth";
 import { supabase } from "@/integrations/supabase/client";
-import {
-  linkPatientByPhone,
-  sendAppointmentWhatsApp,
-} from "@/lib/appointments.functions";
+import { linkPatientByPhone, sendAppointmentWhatsApp } from "@/lib/appointments.functions";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/app/patient")({
@@ -67,10 +64,7 @@ function PatientHome() {
       const ids = Array.from(new Set((data ?? []).map((p) => p.clinic_id)));
       let names: Record<string, string> = {};
       if (ids.length) {
-        const { data: cs } = await supabase
-          .from("clinics")
-          .select("id, name")
-          .in("id", ids);
+        const { data: cs } = await supabase.from("clinics").select("id, name").in("id", ids);
         names = Object.fromEntries((cs ?? []).map((c) => [c.id, c.name]));
       }
       return (data ?? []).map((p) => ({ ...p, clinic_name: names[p.clinic_id] })) as PatientRow[];
@@ -134,10 +128,10 @@ function PatientHome() {
   });
 
   const upcoming = (appts.data ?? []).filter(
-    (a) => new Date(a.scheduled_at) >= new Date() && a.status !== "cancelled",
+    (a) => new Date(a.scheduled_at) >= new Date() && a.status === "scheduled",
   );
   const past = (appts.data ?? []).filter(
-    (a) => new Date(a.scheduled_at) < new Date() || a.status === "cancelled",
+    (a) => new Date(a.scheduled_at) < new Date() || a.status !== "scheduled",
   );
 
   if (records.isLoading) {
@@ -219,12 +213,8 @@ function PatientHome() {
               ) : (
                 followUps.map((v) => {
                   const due = new Date(v.next_follow_up as string);
-                  const days = Math.ceil(
-                    (due.getTime() - today.getTime()) / (1000 * 60 * 60 * 24),
-                  );
-                  const clinicName = records.data!.find(
-                    (r) => r.id === v.patient_id,
-                  )?.clinic_name;
+                  const days = Math.ceil((due.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
+                  const clinicName = records.data!.find((r) => r.id === v.patient_id)?.clinic_name;
                   return (
                     <div
                       key={`fu-${v.id}`}
@@ -244,11 +234,7 @@ function PatientHome() {
                           </p>
                           <p className="truncate text-xs text-muted-foreground">
                             {clinicName} ·{" "}
-                            {days === 0
-                              ? "Today"
-                              : days === 1
-                                ? "Tomorrow"
-                                : `In ${days} days`}
+                            {days === 0 ? "Today" : days === 1 ? "Tomorrow" : `In ${days} days`}
                           </p>
                           {v.chief_complaint && (
                             <p className="mt-1 truncate text-sm text-foreground/80">
@@ -268,9 +254,7 @@ function PatientHome() {
                 <Empty label="No prescriptions yet" />
               ) : (
                 prescribed.map((v) => {
-                  const clinicName = records.data!.find(
-                    (r) => r.id === v.patient_id,
-                  )?.clinic_name;
+                  const clinicName = records.data!.find((r) => r.id === v.patient_id)?.clinic_name;
                   return (
                     <div
                       key={`rx-${v.id}`}
@@ -282,28 +266,23 @@ function PatientHome() {
                         </div>
                         <div className="min-w-0 flex-1">
                           <div className="flex flex-wrap items-baseline gap-x-2">
-                            <p className="font-semibold text-foreground">
-                              {v.prescription}
-                            </p>
+                            <p className="font-semibold text-foreground">{v.prescription}</p>
                             <p className="text-xs text-muted-foreground">
-                              {new Date(v.visit_date as string).toLocaleDateString(
-                                undefined,
-                                { month: "short", day: "numeric", year: "numeric" },
-                              )}
+                              {new Date(v.visit_date as string).toLocaleDateString(undefined, {
+                                month: "short",
+                                day: "numeric",
+                                year: "numeric",
+                              })}
                             </p>
                           </div>
                           {v.dosage && (
-                            <p className="mt-0.5 text-sm text-foreground/80">
-                              {v.dosage}
-                            </p>
+                            <p className="mt-0.5 text-sm text-foreground/80">{v.dosage}</p>
                           )}
                           <p className="mt-1 text-xs text-muted-foreground">
                             {clinicName}
                             {v.chief_complaint ? ` · ${v.chief_complaint}` : ""}
                           </p>
-                          {v.notes && (
-                            <p className="mt-1 text-sm text-foreground/70">{v.notes}</p>
-                          )}
+                          {v.notes && <p className="mt-1 text-sm text-foreground/70">{v.notes}</p>}
                         </div>
                       </div>
                     </div>
@@ -337,7 +316,9 @@ function PatientHome() {
           onClose={() => setRescheduleFor(null)}
           onSaved={async () => {
             try {
-              await sendWhatsApp({ data: { appointmentId: rescheduleFor.id, kind: "rescheduled" } });
+              await sendWhatsApp({
+                data: { appointmentId: rescheduleFor.id, kind: "rescheduled" },
+              });
             } catch (e) {
               console.error(e);
             }
@@ -632,8 +613,8 @@ function LinkRecordPanel({ userName }: { userName?: string }) {
               Welcome{userName ? `, ${userName}` : ""}
             </h1>
             <p className="mt-2 text-sm text-muted-foreground">
-              Enter the same WhatsApp number your clinic saved for you. HomeoCare will connect
-              your login to your existing patient profile.
+              Enter the same WhatsApp number your clinic saved for you. HomeoCare will connect your
+              login to your existing patient profile.
             </p>
 
             <div className="mt-5 grid gap-3 sm:grid-cols-3">
@@ -668,7 +649,8 @@ function LinkRecordPanel({ userName }: { userName?: string }) {
               Find my record
             </button>
             <p className="mt-3 text-xs text-muted-foreground">
-              No match? Ask your clinic to add you as a patient with this phone number, then try again.
+              No match? Ask your clinic to add you as a patient with this phone number, then try
+              again.
             </p>
           </div>
         </div>
@@ -677,9 +659,20 @@ function LinkRecordPanel({ userName }: { userName?: string }) {
   );
 }
 
-function Modal({ title, onClose, children }: { title: string; onClose: () => void; children: React.ReactNode }) {
+function Modal({
+  title,
+  onClose,
+  children,
+}: {
+  title: string;
+  onClose: () => void;
+  children: React.ReactNode;
+}) {
   return (
-    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/40 p-4" onClick={onClose}>
+    <div
+      className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/40 p-4"
+      onClick={onClose}
+    >
       <div
         className="w-full max-w-md rounded-3xl bg-card p-5 shadow-elevated"
         onClick={(e) => e.stopPropagation()}

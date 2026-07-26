@@ -5,10 +5,13 @@ import {
   ArrowRight,
   CalendarCheck,
   CheckCircle2,
+  Clock,
+  FileText,
   HeartPulse,
   MessageCircle,
   Package,
   Plus,
+  Stethoscope,
   Users,
 } from "lucide-react";
 import { useAuth } from "@/hooks/use-auth";
@@ -20,6 +23,40 @@ import { ClinicSetupCard } from "@/components/clinic-setup-card";
 export const Route = createFileRoute("/app/")({
   component: DoctorDashboard,
 });
+
+type DashboardAppointment = {
+  id: string;
+  patient_id: string;
+  scheduled_at: string;
+  duration_minutes: number;
+  reason: string | null;
+  patient: { id: string; full_name: string; phone: string | null } | null;
+};
+
+function todayBounds() {
+  const start = new Date();
+  start.setHours(0, 0, 0, 0);
+  const end = new Date(start);
+  end.setDate(end.getDate() + 1);
+  return { start, end };
+}
+
+async function attachPatients(rows: Array<Omit<DashboardAppointment, "patient">>) {
+  const ids = Array.from(new Set(rows.map((row) => row.patient_id)));
+  if (ids.length === 0) return rows.map((row) => ({ ...row, patient: null }));
+
+  const { data, error } = await supabase
+    .from("patients")
+    .select("id, full_name, phone")
+    .in("id", ids);
+  if (error) throw error;
+
+  const patientMap = new Map((data ?? []).map((patient) => [patient.id, patient]));
+  return rows.map((row) => ({
+    ...row,
+    patient: patientMap.get(row.patient_id) ?? null,
+  })) as DashboardAppointment[];
+}
 
 function DoctorDashboard() {
   const { user, role, loading } = useAuth();
@@ -57,10 +94,47 @@ function DoctorDashboard() {
         .from("appointments")
         .select("id", { count: "exact", head: true })
         .eq("clinic_id", clinic!.id)
+        .eq("status", "scheduled")
         .gte("scheduled_at", start.toISOString())
         .lt("scheduled_at", end.toISOString());
       if (error) throw error;
       return count ?? 0;
+    },
+  });
+
+  const todayAppointments = useQuery({
+    queryKey: ["today-appointments", clinic?.id],
+    enabled: !!clinic?.id,
+    queryFn: async () => {
+      const { start, end } = todayBounds();
+      const { data, error } = await supabase
+        .from("appointments")
+        .select("id, patient_id, scheduled_at, duration_minutes, reason")
+        .eq("clinic_id", clinic!.id)
+        .eq("status", "scheduled")
+        .gte("scheduled_at", start.toISOString())
+        .lt("scheduled_at", end.toISOString())
+        .order("scheduled_at", { ascending: true });
+      if (error) throw error;
+      return attachPatients(data ?? []);
+    },
+  });
+
+  const upcomingAppointments = useQuery({
+    queryKey: ["upcoming-appointments", clinic?.id],
+    enabled: !!clinic?.id,
+    queryFn: async () => {
+      const { end } = todayBounds();
+      const { data, error } = await supabase
+        .from("appointments")
+        .select("id, patient_id, scheduled_at, duration_minutes, reason")
+        .eq("clinic_id", clinic!.id)
+        .eq("status", "scheduled")
+        .gte("scheduled_at", end.toISOString())
+        .order("scheduled_at", { ascending: true })
+        .limit(5);
+      if (error) throw error;
+      return attachPatients(data ?? []);
     },
   });
 
@@ -73,9 +147,7 @@ function DoctorDashboard() {
         .select("quantity, low_stock_threshold")
         .eq("clinic_id", clinic!.id);
       if (error) throw error;
-      return (data ?? []).filter(
-        (r) => Number(r.quantity) <= Number(r.low_stock_threshold),
-      ).length;
+      return (data ?? []).filter((r) => Number(r.quantity) <= Number(r.low_stock_threshold)).length;
     },
   });
 
@@ -226,9 +298,7 @@ function DoctorDashboard() {
                 key={step.label}
                 to={step.to}
                 className={`group rounded-2xl border p-4 transition-smooth hover:-translate-y-0.5 hover:shadow-card ${
-                  step.done
-                    ? "border-primary/25 bg-primary/10"
-                    : "border-border/60 bg-background"
+                  step.done ? "border-primary/25 bg-primary/10" : "border-border/60 bg-background"
                 }`}
               >
                 <div className="flex items-center justify-between gap-2">
@@ -239,7 +309,11 @@ function DoctorDashboard() {
                         : "bg-secondary text-secondary-foreground"
                     }`}
                   >
-                    {step.done ? <CheckCircle2 className="h-5 w-5" /> : <Plus className="h-5 w-5" />}
+                    {step.done ? (
+                      <CheckCircle2 className="h-5 w-5" />
+                    ) : (
+                      <Plus className="h-5 w-5" />
+                    )}
                   </div>
                   <ArrowRight className="h-4 w-4 text-muted-foreground transition-transform group-hover:translate-x-0.5" />
                 </div>
@@ -273,14 +347,135 @@ function DoctorDashboard() {
             >
               {inner}
               <p className="mt-2 inline-flex items-center gap-1 text-xs font-semibold text-primary">
-                Open <ArrowRight className="h-3 w-3 transition-transform group-hover:translate-x-0.5" />
+                Open{" "}
+                <ArrowRight className="h-3 w-3 transition-transform group-hover:translate-x-0.5" />
               </p>
             </Link>
           );
         })}
       </div>
 
+      <section className="mt-6 grid gap-4 lg:grid-cols-2">
+        <AppointmentPanel
+          title="Today's appointment queue"
+          loading={todayAppointments.isLoading}
+          appointments={todayAppointments.data ?? []}
+          empty="No scheduled appointments today."
+          showVisitAction
+        />
+        <AppointmentPanel
+          title="Upcoming appointments"
+          loading={upcomingAppointments.isLoading}
+          appointments={upcomingAppointments.data ?? []}
+          empty="No upcoming scheduled appointments."
+        />
+      </section>
+
       <FollowUpRemindersCard clinicId={clinic?.id} />
+    </div>
+  );
+}
+
+function AppointmentPanel({
+  title,
+  loading,
+  appointments,
+  empty,
+  showVisitAction,
+}: {
+  title: string;
+  loading: boolean;
+  appointments: DashboardAppointment[];
+  empty: string;
+  showVisitAction?: boolean;
+}) {
+  return (
+    <div className="rounded-2xl border border-border/60 bg-card p-5 shadow-card">
+      <div className="mb-3 flex items-center justify-between gap-3">
+        <h2 className="text-base font-bold tracking-tight">{title}</h2>
+        <Link
+          to="/app/appointments"
+          className="inline-flex items-center gap-1 text-xs font-semibold text-primary"
+        >
+          Manage <ArrowRight className="h-3 w-3" />
+        </Link>
+      </div>
+
+      {loading ? (
+        <div className="rounded-2xl border border-border/60 bg-background p-5 text-center text-sm text-muted-foreground">
+          Loading appointments...
+        </div>
+      ) : appointments.length === 0 ? (
+        <div className="rounded-2xl border border-dashed border-border bg-background/60 p-5 text-center text-sm text-muted-foreground">
+          {empty}
+        </div>
+      ) : (
+        <div className="space-y-2">
+          {appointments.map((appointment) => (
+            <DashboardAppointmentCard
+              key={appointment.id}
+              appointment={appointment}
+              showVisitAction={showVisitAction}
+            />
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function DashboardAppointmentCard({
+  appointment,
+  showVisitAction,
+}: {
+  appointment: DashboardAppointment;
+  showVisitAction?: boolean;
+}) {
+  const dt = new Date(appointment.scheduled_at);
+  const patient = appointment.patient;
+
+  return (
+    <div className="rounded-2xl border border-border/60 bg-background p-4">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+        <div className="flex h-12 w-12 shrink-0 flex-col items-center justify-center rounded-xl bg-secondary text-secondary-foreground">
+          <span className="text-[10px] font-semibold uppercase">
+            {dt.toLocaleDateString(undefined, { month: "short" })}
+          </span>
+          <span className="text-base font-bold leading-none">{dt.getDate()}</span>
+        </div>
+        <div className="min-w-0 flex-1">
+          <p className="truncate font-semibold text-foreground">
+            {patient?.full_name ?? "Unknown patient"}
+          </p>
+          <p className="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-muted-foreground">
+            <span className="inline-flex items-center gap-1">
+              <Clock className="h-3 w-3" />
+              {dt.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+            </span>
+            <span>{appointment.duration_minutes} min</span>
+            {appointment.reason && <span className="truncate">{appointment.reason}</span>}
+          </p>
+        </div>
+        {patient && (
+          <div className="flex shrink-0 flex-wrap gap-2">
+            <Link
+              to="/app/patients/$patientId"
+              params={{ patientId: patient.id }}
+              className="inline-flex h-9 items-center gap-1.5 rounded-full border border-border bg-card px-3 text-xs font-semibold text-foreground transition-smooth hover:bg-muted"
+            >
+              <FileText className="h-3.5 w-3.5" /> Case
+            </Link>
+            {showVisitAction && (
+              <a
+                href={`/app/patients/${patient.id}?newVisit=1&appointmentId=${appointment.id}`}
+                className="inline-flex h-9 items-center gap-1.5 rounded-full bg-gradient-primary px-3 text-xs font-semibold text-primary-foreground shadow-soft"
+              >
+                <Stethoscope className="h-3.5 w-3.5" /> Record
+              </a>
+            )}
+          </div>
+        )}
+      </div>
     </div>
   );
 }
