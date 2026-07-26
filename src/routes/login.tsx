@@ -5,6 +5,7 @@ import { KeyRound, Loader2 } from "lucide-react";
 import { AuthShell, Field, PrimaryButton, RoleToggle } from "@/components/auth-shell";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/use-auth";
+import { authRedirectTo } from "@/lib/auth-redirects";
 
 export const Route = createFileRoute("/login")({
   component: LoginPage,
@@ -89,7 +90,7 @@ function LoginPage() {
       type: "signup",
       email,
       options: {
-        emailRedirectTo: `${window.location.origin}/auth/callback`,
+        emailRedirectTo: authRedirectTo("/auth/callback"),
       },
     });
     setBusy(false);
@@ -104,8 +105,8 @@ function LoginPage() {
     setBusy(true);
     const next = safeNext();
     const redirectTo = next
-      ? `${window.location.origin}${next}`
-      : window.location.origin;
+      ? authRedirectTo(next)
+      : authRedirectTo();
     const { error } = await supabase.auth.signInWithOAuth({
       provider: "google",
       options: { redirectTo },

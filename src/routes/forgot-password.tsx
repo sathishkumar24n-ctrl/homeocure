@@ -4,6 +4,7 @@ import { CheckCircle2, Loader2, Mail } from "lucide-react";
 import { toast } from "sonner";
 import { AuthShell, Field, PrimaryButton } from "@/components/auth-shell";
 import { supabase } from "@/integrations/supabase/client";
+import { authRedirectTo } from "@/lib/auth-redirects";
 
 export const Route = createFileRoute("/forgot-password")({
   component: ForgotPasswordPage,
@@ -21,7 +22,7 @@ function ForgotPasswordPage() {
     event.preventDefault();
     setBusy(true);
     const { error } = await supabase.auth.resetPasswordForEmail(email.trim(), {
-      redirectTo: `${window.location.origin}/reset-password`,
+      redirectTo: authRedirectTo("/reset-password"),
     });
     setBusy(false);
 

@@ -5,6 +5,7 @@ import { CheckCircle2, Loader2 } from "lucide-react";
 import { AuthShell, Field, PrimaryButton, RoleToggle } from "@/components/auth-shell";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/use-auth";
+import { authRedirectTo } from "@/lib/auth-redirects";
 
 export const Route = createFileRoute("/signup")({
   component: SignupPage,
@@ -44,7 +45,7 @@ function SignupPage() {
       email,
       password,
       options: {
-        emailRedirectTo: `${window.location.origin}/`,
+        emailRedirectTo: authRedirectTo(),
         data: {
           full_name: fullName,
           phone,
@@ -65,7 +66,7 @@ function SignupPage() {
     setBusy(true);
     const { error } = await supabase.auth.signInWithOAuth({
       provider: "google",
-      options: { redirectTo: window.location.origin },
+      options: { redirectTo: authRedirectTo() },
     });
     if (error) {
       setBusy(false);
