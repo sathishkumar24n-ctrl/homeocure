@@ -368,7 +368,15 @@ function PatientDetailPage() {
             <p className="mt-2 text-sm text-muted-foreground">No visits match that search.</p>
           </div>
         ) : (
-          filteredVisits.map((v) => <VisitCard key={v.id} visit={v} onPrint={setPrintVisit} />)
+          filteredVisits.map((v) => (
+            <VisitCard
+              key={v.id}
+              visit={v}
+              patient={p}
+              clinicName={clinic?.name}
+              onPrint={setPrintVisit}
+            />
+          ))
         )}
       </div>
 
@@ -590,7 +598,29 @@ function AppointmentCard({ appointment }: { appointment: any }) {
   );
 }
 
-function VisitCard({ visit, onPrint }: { visit: any; onPrint: (visit: any) => void }) {
+function VisitCard({
+  visit,
+  patient,
+  clinicName,
+  onPrint,
+}: {
+  visit: any;
+  patient: any;
+  clinicName?: string | null;
+  onPrint: (visit: any) => void;
+}) {
+  const prescriptionHref = patient.phone
+    ? buildWhatsAppHref(
+        patient.phone,
+        buildPrescriptionWhatsAppMessage({
+          patientName: patient.full_name,
+          clinicName,
+          visit,
+          verifyUrl: prescriptionVerifyUrl(visit),
+        }),
+      )
+    : undefined;
+
   return (
     <div className="rounded-2xl border border-border/60 bg-card p-4 shadow-card">
       <div className="flex flex-wrap items-center justify-between gap-2">
@@ -608,12 +638,24 @@ function VisitCard({ visit, onPrint }: { visit: any; onPrint: (visit: any) => vo
             </p>
           )}
         </div>
-        <button
-          onClick={() => onPrint(visit)}
-          className="inline-flex items-center gap-1.5 rounded-full border border-border bg-card px-3 py-1.5 text-xs font-semibold text-foreground transition-smooth hover:bg-muted"
-        >
-          <Printer className="h-3.5 w-3.5" /> Print
-        </button>
+        <div className="flex flex-wrap gap-2">
+          {prescriptionHref && (
+            <a
+              href={prescriptionHref}
+              target="_blank"
+              rel="noreferrer"
+              className="inline-flex items-center gap-1.5 rounded-full border border-primary/30 bg-primary/10 px-3 py-1.5 text-xs font-semibold text-primary transition-smooth hover:bg-primary/15"
+            >
+              <MessageCircle className="h-3.5 w-3.5" /> WhatsApp
+            </a>
+          )}
+          <button
+            onClick={() => onPrint(visit)}
+            className="inline-flex items-center gap-1.5 rounded-full border border-border bg-card px-3 py-1.5 text-xs font-semibold text-foreground transition-smooth hover:bg-muted"
+          >
+            <Printer className="h-3.5 w-3.5" /> Print
+          </button>
+        </div>
       </div>
       {visit.chief_complaint && (
         <p className="mt-2 text-sm font-medium text-foreground">{visit.chief_complaint}</p>
@@ -630,6 +672,27 @@ function VisitCard({ visit, onPrint }: { visit: any; onPrint: (visit: any) => vo
       </div>
     </div>
   );
+}
+
+function buildPrescriptionWhatsAppMessage({
+  patientName,
+  clinicName,
+  visit,
+  verifyUrl,
+}: {
+  patientName: string;
+  clinicName?: string | null;
+  visit: any;
+  verifyUrl: string;
+}) {
+  const name = firstName(patientName);
+  const clinic = clinicName?.trim() || "your clinic";
+  const date = formatDate(visit.visit_date);
+  const dosage = visit.dosage?.trim() ? `\nDosage: ${visit.dosage.trim()}` : "";
+  const followUp = visit.next_follow_up
+    ? `\nFollow-up: ${formatDate(visit.next_follow_up)}`
+    : "";
+  return `Hi ${name}, your prescription from ${clinic} for ${date} is ready.${dosage}${followUp}\nOpen digital prescription: ${verifyUrl}`;
 }
 
 function Field({ label, value }: { label: string; value: string }) {

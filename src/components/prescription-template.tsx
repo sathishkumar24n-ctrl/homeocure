@@ -64,7 +64,7 @@ export function PrescriptionTemplate({
               )}
             </div>
             <div className="rx-doctor">
-              <div className="rx-doctor-name">Dr. {clinic.doctor_name || "Doctor"}</div>
+              <div className="rx-doctor-name">{doctorName(clinic.doctor_name)}</div>
               <div>{clinic.qualification || "BHMS / MD (Hom.)"}</div>
               <div>Reg. No.: {clinic.registration_no || "________________"}</div>
               {clinic.phone && <div>{clinic.phone}</div>}
@@ -84,6 +84,9 @@ export function PrescriptionTemplate({
               <Line label="Mobile" value={patient.phone} />
               <Line label="Date" value={formatDate(visit.visit_date)} />
               <Line label="Address" value={patient.address} wide />
+              <Line label="Visit No." value="" />
+              <Line label="Weight (kg)" value="" />
+              <Line label="BP" value="" />
             </div>
           </section>
 
@@ -169,6 +172,7 @@ export function PrescriptionTemplate({
               <div>Doctor Signature</div>
             </div>
           </footer>
+          <div className="rx-wave" />
         </div>
         <PrescriptionStyles />
       </div>
@@ -228,81 +232,94 @@ function PrescriptionStyles() {
         color: #111827;
         background: white;
         font-family: Arial, sans-serif;
+        line-height: 1.35;
       }
 
       .rx-frame {
-        max-width: 820px;
-        min-height: 1120px;
+        position: relative;
+        box-sizing: border-box;
+        max-width: 794px;
+        min-height: 1123px;
         margin: 0 auto;
-        border: 2px solid #0b5394;
+        overflow: hidden;
+        border: 2px solid #0759a5;
         background: white;
+        box-shadow: 0 12px 34px rgba(15, 23, 42, 0.08);
       }
 
       .rx-header {
         display: grid;
         grid-template-columns: 1fr 1fr;
-        gap: 28px;
-        padding: 28px 38px 22px;
-        border-bottom: 2px solid #0b5394;
+        gap: 42px;
+        min-height: 190px;
+        padding: 28px 38px 24px;
+        border-bottom: 3px solid #0759a5;
       }
 
       .rx-logo-box {
         display: flex;
         align-items: center;
         justify-content: center;
-        width: 160px;
-        height: 130px;
+        width: 156px;
+        height: 136px;
         border: 1.5px dashed #2f80d0;
         border-radius: 14px;
+        background: linear-gradient(180deg, #ffffff 0%, #f8fbff 100%);
       }
 
       .rx-logo {
         max-width: 135px;
-        max-height: 105px;
+        max-height: 112px;
         object-fit: contain;
       }
 
       .rx-logo-empty {
         color: #0b5394;
-        font-size: 20px;
+        font-size: 21px;
         font-weight: 700;
         text-align: center;
         line-height: 1.25;
       }
 
       .rx-doctor {
-        border-left: 1px solid #2f80d0;
-        padding-left: 28px;
-        font-size: 14px;
-        line-height: 1.65;
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        border-left: 2px solid #75a9dd;
+        padding-left: 36px;
+        color: #111827;
+        font-size: 15px;
+        line-height: 1.6;
       }
 
       .rx-doctor-name {
-        color: #0b5394;
-        font-size: 22px;
+        color: #0759a5;
+        font-size: 28px;
         font-weight: 800;
+        line-height: 1.1;
       }
 
       .rx-section {
-        padding: 18px 28px 0;
+        padding: 18px 30px 0;
       }
 
       .rx-section-title {
         display: inline-block;
-        margin-bottom: 14px;
+        margin-bottom: 16px;
         border-radius: 4px;
-        background: #0b5394;
+        background: linear-gradient(180deg, #126fc4 0%, #0759a5 100%);
         color: white;
-        padding: 7px 12px;
-        font-size: 13px;
+        padding: 8px 14px;
+        font-size: 14px;
         font-weight: 800;
         text-transform: uppercase;
+        box-shadow: 0 2px 0 #063f74;
       }
 
       .rx-grid {
         display: grid;
         grid-template-columns: 1fr 1.3fr 0.9fr;
-        gap: 14px 26px;
+        gap: 15px 28px;
       }
 
       .rx-line {
@@ -310,13 +327,15 @@ function PrescriptionStyles() {
         grid-template-columns: auto 1fr;
         gap: 10px;
         align-items: end;
-        font-size: 13px;
+        min-width: 0;
+        font-size: 14px;
       }
 
       .rx-line strong {
-        min-height: 20px;
+        min-height: 23px;
         border-bottom: 1px solid #374151;
         font-weight: 500;
+        word-break: break-word;
       }
 
       .rx-wide {
@@ -324,15 +343,26 @@ function PrescriptionStyles() {
       }
 
       .rx-line-title {
-        color: #0b5394;
-        font-size: 13px;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        color: #0759a5;
+        font-size: 14px;
         font-weight: 800;
         text-transform: uppercase;
       }
 
+      .rx-line-title::before {
+        content: "";
+        width: 18px;
+        height: 18px;
+        border: 2px solid #0759a5;
+        border-radius: 3px;
+      }
+
       .rx-writing-lines {
-        min-height: 44px;
-        margin-top: 10px;
+        min-height: 54px;
+        margin-top: 12px;
         white-space: pre-wrap;
         border-bottom: 1px solid #374151;
         box-shadow: 0 26px 0 -25px #374151;
@@ -340,18 +370,18 @@ function PrescriptionStyles() {
 
       .rx-table-wrap {
         position: relative;
-        margin: 22px 22px 0;
-        border: 1.5px solid #0b5394;
+        margin: 24px 22px 0;
+        border: 2px solid #0759a5;
         border-radius: 8px;
         overflow: hidden;
       }
 
       .rx-tab {
-        width: 82px;
-        background: #0b5394;
+        width: 92px;
+        background: linear-gradient(180deg, #126fc4 0%, #0759a5 100%);
         color: white;
-        padding: 8px 20px;
-        font-size: 18px;
+        padding: 9px 22px;
+        font-size: 20px;
         font-weight: 800;
       }
 
@@ -362,15 +392,15 @@ function PrescriptionStyles() {
       }
 
       .rx-table th {
-        background: #0b5394;
+        background: linear-gradient(180deg, #126fc4 0%, #0759a5 100%);
         color: white;
-        padding: 9px 6px;
+        padding: 10px 6px;
         text-align: center;
         text-transform: uppercase;
       }
 
       .rx-table td {
-        height: 34px;
+        height: 38px;
         border: 1px solid #8ab4e8;
         padding: 6px 8px;
       }
@@ -383,15 +413,15 @@ function PrescriptionStyles() {
       .rx-bottom-grid {
         display: grid;
         grid-template-columns: 1fr 1fr;
-        gap: 34px;
-        padding: 22px 28px;
+        gap: 44px;
+        padding: 22px 30px;
       }
 
       .rx-check-line {
-        margin-top: 11px;
+        margin-top: 12px;
         border-bottom: 1px solid #9ca3af;
         padding-bottom: 4px;
-        font-size: 13px;
+        font-size: 14px;
       }
 
       .rx-box {
@@ -406,13 +436,14 @@ function PrescriptionStyles() {
         margin-top: 18px;
         border: 1px solid #8ab4e8;
         border-radius: 8px;
-        padding: 12px;
+        padding: 13px 14px;
         color: #111827;
-        font-size: 12px;
+        font-size: 12.5px;
+        background: linear-gradient(135deg, #ffffff 0%, #f5fbff 100%);
       }
 
       .rx-instructions strong {
-        color: #0b5394;
+        color: #0759a5;
         text-transform: uppercase;
       }
 
@@ -428,21 +459,21 @@ function PrescriptionStyles() {
         justify-content: space-between;
         gap: 22px;
         border-top: 1px solid #c7dbf5;
-        padding: 14px 26px 20px;
+        padding: 18px 28px 48px;
       }
 
       .rx-verify {
         display: flex;
         align-items: center;
-        gap: 14px;
-        color: #0b5394;
+        gap: 18px;
+        color: #0759a5;
         font-size: 12px;
         text-transform: uppercase;
       }
 
       .rx-verify img {
-        width: 86px;
-        height: 86px;
+        width: 92px;
+        height: 92px;
         border: 1px solid #8ab4e8;
         border-radius: 8px;
       }
@@ -455,37 +486,67 @@ function PrescriptionStyles() {
       }
 
       .rx-signature {
-        min-width: 260px;
+        min-width: 285px;
         border: 1.5px dashed #2f80d0;
         border-radius: 12px;
-        padding: 10px;
+        padding: 12px;
         text-align: center;
-        color: #0b5394;
+        color: #0759a5;
         font-size: 12px;
         font-weight: 700;
+        background: #fff;
       }
 
       .rx-signature img {
         display: block;
-        height: 56px;
-        max-width: 210px;
+        height: 58px;
+        max-width: 230px;
         object-fit: contain;
         margin: 0 auto 6px;
-        border-bottom: 1px solid #0b5394;
+        border-bottom: 1px solid #0759a5;
       }
 
       .rx-signature-placeholder {
-        height: 56px;
+        height: 58px;
         margin-bottom: 6px;
-        border-bottom: 1px solid #0b5394;
-        line-height: 56px;
+        border-bottom: 1px solid #0759a5;
+        line-height: 58px;
+      }
+
+      .rx-wave {
+        position: absolute;
+        right: -40px;
+        bottom: -24px;
+        left: -40px;
+        height: 54px;
+        background:
+          radial-gradient(120px 28px at 50% 8px, transparent 48%, #0759a5 50%, transparent 52%),
+          linear-gradient(174deg, transparent 0 38%, #0b66b7 39% 56%, #e8f4ff 57% 70%, transparent 71%);
+      }
+
+      @media screen and (max-width: 860px) {
+        .rx-frame {
+          transform: scale(0.72);
+          transform-origin: top center;
+          margin-bottom: -300px;
+        }
       }
 
       @media print {
         .rx-frame {
           max-width: none;
           width: 100%;
-          min-height: auto;
+          min-height: 277mm;
+          border-color: #0759a5;
+          box-shadow: none;
+        }
+
+        .rx-header {
+          min-height: 48mm;
+        }
+
+        .rx-footer {
+          padding-bottom: 14mm;
         }
       }
     `}</style>
@@ -525,6 +586,12 @@ function qrCodeUrl(value: string) {
 
 function shortId(id?: string | null) {
   return id ? id.slice(0, 8).toUpperCase() : "";
+}
+
+function doctorName(value?: string | null) {
+  const name = value?.trim();
+  if (!name) return "Dr.";
+  return /^dr\.?\s/i.test(name) ? name : `Dr. ${name}`;
 }
 
 function formatGender(gender?: string | null) {
