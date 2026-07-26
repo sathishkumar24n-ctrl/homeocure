@@ -10,7 +10,7 @@ export function useClinic() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("clinics")
-        .select("id, name")
+        .select("*")
         .eq("owner_id", user!.id)
         .order("created_at", { ascending: true })
         .limit(1)

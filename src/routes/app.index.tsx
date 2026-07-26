@@ -3,6 +3,7 @@ import { useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
 import {
   ArrowRight,
+  Building2,
   CalendarCheck,
   CheckCircle2,
   Clock,
@@ -215,6 +216,13 @@ function DoctorDashboard() {
       to: "/app/whatsapp-status" as const,
       hint: "Config, logs & scheduler",
     },
+    {
+      icon: Building2,
+      label: "Clinic profile",
+      value: "Edit",
+      to: "/app/clinic" as const,
+      hint: "Logo, signature & registration",
+    },
   ];
 
   const onboardingSteps = [
@@ -247,6 +255,12 @@ function DoctorDashboard() {
       detail: "Confirm reminders and appointment messages are ready.",
       done: false,
       to: "/app/whatsapp-status" as const,
+    },
+    {
+      label: "Complete prescription branding",
+      detail: "Add logo, doctor signature, registration number, and clinic contact.",
+      done: Boolean(clinic?.registration_no || clinic?.logo_data_url || clinic?.signature_data_url),
+      to: "/app/clinic" as const,
     },
   ];
 
@@ -292,7 +306,7 @@ function DoctorDashboard() {
             </div>
           </div>
 
-          <div className="mt-5 grid gap-3 lg:grid-cols-5">
+          <div className="mt-5 grid gap-3 lg:grid-cols-6">
             {onboardingSteps.map((step) => (
               <Link
                 key={step.label}
@@ -325,7 +339,7 @@ function DoctorDashboard() {
         </section>
       )}
 
-      <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
+      <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
         {tiles.map((t) => {
           const inner = (
             <>

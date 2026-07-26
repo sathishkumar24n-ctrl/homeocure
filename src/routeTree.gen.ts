@@ -17,10 +17,12 @@ import { Route as ForgotPasswordRouteImport } from './routes/forgot-password'
 import { Route as AppRouteImport } from './routes/app'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as AppIndexRouteImport } from './routes/app.index'
+import { Route as PrescriptionTokenRouteImport } from './routes/prescription.$token'
 import { Route as AppWhatsappStatusRouteImport } from './routes/app.whatsapp-status'
 import { Route as AppRemediesRouteImport } from './routes/app.remedies'
 import { Route as AppPatientRouteImport } from './routes/app.patient'
 import { Route as AppFollowUpsRouteImport } from './routes/app.follow-ups'
+import { Route as AppClinicRouteImport } from './routes/app.clinic'
 import { Route as AppAppointmentsRouteImport } from './routes/app.appointments'
 import { Route as Char91DotwellKnownChar93OauthProtectedResourceRouteImport } from './routes/[.well-known]/oauth-protected-resource'
 import { Route as Char91DotmcpChar93ListToolsRouteImport } from './routes/[.mcp]/list-tools'
@@ -71,6 +73,11 @@ const AppIndexRoute = AppIndexRouteImport.update({
   path: '/',
   getParentRoute: () => AppRoute,
 } as any)
+const PrescriptionTokenRoute = PrescriptionTokenRouteImport.update({
+  id: '/prescription/$token',
+  path: '/prescription/$token',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const AppWhatsappStatusRoute = AppWhatsappStatusRouteImport.update({
   id: '/whatsapp-status',
   path: '/whatsapp-status',
@@ -89,6 +96,11 @@ const AppPatientRoute = AppPatientRouteImport.update({
 const AppFollowUpsRoute = AppFollowUpsRouteImport.update({
   id: '/follow-ups',
   path: '/follow-ups',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppClinicRoute = AppClinicRouteImport.update({
+  id: '/clinic',
+  path: '/clinic',
   getParentRoute: () => AppRoute,
 } as any)
 const AppAppointmentsRoute = AppAppointmentsRouteImport.update({
@@ -152,10 +164,12 @@ export interface FileRoutesByFullPath {
   '/.mcp/list-tools': typeof Char91DotmcpChar93ListToolsRoute
   '/.well-known/oauth-protected-resource': typeof Char91DotwellKnownChar93OauthProtectedResourceRoute
   '/app/appointments': typeof AppAppointmentsRoute
+  '/app/clinic': typeof AppClinicRoute
   '/app/follow-ups': typeof AppFollowUpsRoute
   '/app/patient': typeof AppPatientRoute
   '/app/remedies': typeof AppRemediesRoute
   '/app/whatsapp-status': typeof AppWhatsappStatusRoute
+  '/prescription/$token': typeof PrescriptionTokenRoute
   '/app/': typeof AppIndexRoute
   '/.lovable/oauth/consent': typeof DotlovableOauthConsentRoute
   '/.mcp/invoke-tool/$tool': typeof Char91DotmcpChar93InvokeToolToolRoute
@@ -174,10 +188,12 @@ export interface FileRoutesByTo {
   '/.mcp/list-tools': typeof Char91DotmcpChar93ListToolsRoute
   '/.well-known/oauth-protected-resource': typeof Char91DotwellKnownChar93OauthProtectedResourceRoute
   '/app/appointments': typeof AppAppointmentsRoute
+  '/app/clinic': typeof AppClinicRoute
   '/app/follow-ups': typeof AppFollowUpsRoute
   '/app/patient': typeof AppPatientRoute
   '/app/remedies': typeof AppRemediesRoute
   '/app/whatsapp-status': typeof AppWhatsappStatusRoute
+  '/prescription/$token': typeof PrescriptionTokenRoute
   '/app': typeof AppIndexRoute
   '/.lovable/oauth/consent': typeof DotlovableOauthConsentRoute
   '/.mcp/invoke-tool/$tool': typeof Char91DotmcpChar93InvokeToolToolRoute
@@ -198,10 +214,12 @@ export interface FileRoutesById {
   '/.mcp/list-tools': typeof Char91DotmcpChar93ListToolsRoute
   '/.well-known/oauth-protected-resource': typeof Char91DotwellKnownChar93OauthProtectedResourceRoute
   '/app/appointments': typeof AppAppointmentsRoute
+  '/app/clinic': typeof AppClinicRoute
   '/app/follow-ups': typeof AppFollowUpsRoute
   '/app/patient': typeof AppPatientRoute
   '/app/remedies': typeof AppRemediesRoute
   '/app/whatsapp-status': typeof AppWhatsappStatusRoute
+  '/prescription/$token': typeof PrescriptionTokenRoute
   '/app/': typeof AppIndexRoute
   '/.lovable/oauth/consent': typeof DotlovableOauthConsentRoute
   '/.mcp/invoke-tool/$tool': typeof Char91DotmcpChar93InvokeToolToolRoute
@@ -223,10 +241,12 @@ export interface FileRouteTypes {
     | '/.mcp/list-tools'
     | '/.well-known/oauth-protected-resource'
     | '/app/appointments'
+    | '/app/clinic'
     | '/app/follow-ups'
     | '/app/patient'
     | '/app/remedies'
     | '/app/whatsapp-status'
+    | '/prescription/$token'
     | '/app/'
     | '/.lovable/oauth/consent'
     | '/.mcp/invoke-tool/$tool'
@@ -245,10 +265,12 @@ export interface FileRouteTypes {
     | '/.mcp/list-tools'
     | '/.well-known/oauth-protected-resource'
     | '/app/appointments'
+    | '/app/clinic'
     | '/app/follow-ups'
     | '/app/patient'
     | '/app/remedies'
     | '/app/whatsapp-status'
+    | '/prescription/$token'
     | '/app'
     | '/.lovable/oauth/consent'
     | '/.mcp/invoke-tool/$tool'
@@ -268,10 +290,12 @@ export interface FileRouteTypes {
     | '/.mcp/list-tools'
     | '/.well-known/oauth-protected-resource'
     | '/app/appointments'
+    | '/app/clinic'
     | '/app/follow-ups'
     | '/app/patient'
     | '/app/remedies'
     | '/app/whatsapp-status'
+    | '/prescription/$token'
     | '/app/'
     | '/.lovable/oauth/consent'
     | '/.mcp/invoke-tool/$tool'
@@ -291,6 +315,7 @@ export interface RootRouteChildren {
   SignupRoute: typeof SignupRoute
   Char91DotmcpChar93ListToolsRoute: typeof Char91DotmcpChar93ListToolsRoute
   Char91DotwellKnownChar93OauthProtectedResourceRoute: typeof Char91DotwellKnownChar93OauthProtectedResourceRoute
+  PrescriptionTokenRoute: typeof PrescriptionTokenRoute
   DotlovableOauthConsentRoute: typeof DotlovableOauthConsentRoute
   Char91DotmcpChar93InvokeToolToolRoute: typeof Char91DotmcpChar93InvokeToolToolRoute
   ApiPublicHooksFollowUpRemindersRoute: typeof ApiPublicHooksFollowUpRemindersRoute
@@ -354,6 +379,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppIndexRouteImport
       parentRoute: typeof AppRoute
     }
+    '/prescription/$token': {
+      id: '/prescription/$token'
+      path: '/prescription/$token'
+      fullPath: '/prescription/$token'
+      preLoaderRoute: typeof PrescriptionTokenRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/app/whatsapp-status': {
       id: '/app/whatsapp-status'
       path: '/whatsapp-status'
@@ -380,6 +412,13 @@ declare module '@tanstack/react-router' {
       path: '/follow-ups'
       fullPath: '/app/follow-ups'
       preLoaderRoute: typeof AppFollowUpsRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/app/clinic': {
+      id: '/app/clinic'
+      path: '/clinic'
+      fullPath: '/app/clinic'
+      preLoaderRoute: typeof AppClinicRouteImport
       parentRoute: typeof AppRoute
     }
     '/app/appointments': {
@@ -450,6 +489,7 @@ declare module '@tanstack/react-router' {
 
 interface AppRouteChildren {
   AppAppointmentsRoute: typeof AppAppointmentsRoute
+  AppClinicRoute: typeof AppClinicRoute
   AppFollowUpsRoute: typeof AppFollowUpsRoute
   AppPatientRoute: typeof AppPatientRoute
   AppRemediesRoute: typeof AppRemediesRoute
@@ -462,6 +502,7 @@ interface AppRouteChildren {
 
 const AppRouteChildren: AppRouteChildren = {
   AppAppointmentsRoute: AppAppointmentsRoute,
+  AppClinicRoute: AppClinicRoute,
   AppFollowUpsRoute: AppFollowUpsRoute,
   AppPatientRoute: AppPatientRoute,
   AppRemediesRoute: AppRemediesRoute,
@@ -485,6 +526,7 @@ const rootRouteChildren: RootRouteChildren = {
   Char91DotmcpChar93ListToolsRoute: Char91DotmcpChar93ListToolsRoute,
   Char91DotwellKnownChar93OauthProtectedResourceRoute:
     Char91DotwellKnownChar93OauthProtectedResourceRoute,
+  PrescriptionTokenRoute: PrescriptionTokenRoute,
   DotlovableOauthConsentRoute: DotlovableOauthConsentRoute,
   Char91DotmcpChar93InvokeToolToolRoute: Char91DotmcpChar93InvokeToolToolRoute,
   ApiPublicHooksFollowUpRemindersRoute: ApiPublicHooksFollowUpRemindersRoute,

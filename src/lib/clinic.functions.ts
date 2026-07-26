@@ -7,6 +7,15 @@ export const ensureDoctorClinic = createServerFn({ method: "POST" })
   .inputValidator(
     z.object({
       clinicName: z.string().trim().min(2).max(120),
+      doctorName: z.string().trim().max(120).optional().nullable(),
+      qualification: z.string().trim().max(120).optional().nullable(),
+      registrationNo: z.string().trim().max(80).optional().nullable(),
+      phone: z.string().trim().max(40).optional().nullable(),
+      email: z.string().trim().email().max(255).optional().or(z.literal("")).nullable(),
+      addressLine1: z.string().trim().max(255).optional().nullable(),
+      addressLine2: z.string().trim().max(255).optional().nullable(),
+      logoDataUrl: z.string().max(700_000).optional().nullable(),
+      signatureDataUrl: z.string().max(700_000).optional().nullable(),
     }).parse,
   )
   .handler(async ({ data, context }) => {
@@ -14,7 +23,7 @@ export const ensureDoctorClinic = createServerFn({ method: "POST" })
 
     const { data: existing, error: existingError } = await supabase
       .from("clinics")
-      .select("id, name")
+      .select("*")
       .eq("owner_id", userId)
       .order("created_at", { ascending: true })
       .limit(1)
@@ -36,14 +45,34 @@ export const ensureDoctorClinic = createServerFn({ method: "POST" })
       throw new Error("This login is a patient account. Please sign in with the doctor account.");
     }
 
-    const { data: clinic, error: clinicError } = await supabaseAdmin
+    const payload = {
+      name: data.clinicName,
+      owner_id: userId,
+      doctor_name: nullify(data.doctorName),
+      qualification: nullify(data.qualification),
+      registration_no: nullify(data.registrationNo),
+      phone: nullify(data.phone),
+      email: nullify(data.email),
+      address_line1: nullify(data.addressLine1),
+      address_line2: nullify(data.addressLine2),
+      logo_data_url: nullify(data.logoDataUrl),
+      signature_data_url: nullify(data.signatureDataUrl),
+    };
+
+    let { data: clinic, error: clinicError } = await supabaseAdmin
       .from("clinics")
-      .insert({
-        name: data.clinicName,
-        owner_id: userId,
-      })
-      .select("id, name")
+      .insert(payload)
+      .select("*")
       .single();
+    if (clinicError && /column|schema cache/i.test(clinicError.message)) {
+      const fallback = await supabaseAdmin
+        .from("clinics")
+        .insert({ name: data.clinicName, owner_id: userId })
+        .select("id, name")
+        .single();
+      clinic = fallback.data;
+      clinicError = fallback.error;
+    }
     if (clinicError) throw clinicError;
 
     if (!hasDoctorRole) {
@@ -57,3 +86,8 @@ export const ensureDoctorClinic = createServerFn({ method: "POST" })
 
     return clinic;
   });
+
+function nullify(value?: string | null) {
+  const trimmed = value?.trim();
+  return trimmed ? trimmed : null;
+}

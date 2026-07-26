@@ -23,6 +23,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/use-auth";
 import { useClinic } from "@/hooks/use-clinic";
 import { TextField, TextAreaField, FormRow } from "@/components/form-fields";
+import { PrescriptionTemplate } from "@/components/prescription-template";
 import { visitSchema, type VisitInput } from "@/lib/patient-schema";
 
 export const Route = createFileRoute("/app/patients/$patientId")({
@@ -170,10 +171,12 @@ function PatientDetailPage() {
   return (
     <div className="mx-auto max-w-3xl px-4 py-6">
       {printVisit && (
-        <PrintablePrescription
-          patientName={p.full_name}
-          clinicName={clinic?.name}
+        <PrescriptionTemplate
+          clinic={clinic ?? { name: "HomeoCare" }}
+          patient={p}
           visit={printVisit}
+          verifyUrl={prescriptionVerifyUrl(printVisit)}
+          printRoot
         />
       )}
 
@@ -629,136 +632,6 @@ function VisitCard({ visit, onPrint }: { visit: any; onPrint: (visit: any) => vo
   );
 }
 
-function PrintablePrescription({
-  patientName,
-  clinicName,
-  visit,
-}: {
-  patientName: string;
-  clinicName?: string | null;
-  visit: any;
-}) {
-  const medicineCount = countDispensedMedicines(visit.prescription);
-  const medicines = Array.from({ length: medicineCount }, (_, i) => `Medicine ${i + 1}`);
-
-  return (
-    <>
-      <style>{`
-        @media screen {
-          #print-prescription-root {
-            display: none;
-          }
-        }
-
-        @media print {
-          @page {
-            margin: 14mm;
-          }
-
-          body * {
-            visibility: hidden !important;
-          }
-
-          #print-prescription-root,
-          #print-prescription-root * {
-            visibility: visible !important;
-          }
-
-          #print-prescription-root {
-            display: block !important;
-            position: absolute;
-            inset: 0 auto auto 0;
-            width: 100%;
-            padding: 0;
-            color: #111827;
-            background: white;
-            font-family: Arial, sans-serif;
-          }
-        }
-      `}</style>
-      <div id="print-prescription-root">
-        <div style={{ borderBottom: "2px solid #047857", paddingBottom: 14, marginBottom: 18 }}>
-          <div style={{ fontSize: 24, fontWeight: 700 }}>{clinicName || "HomeoCare"}</div>
-          <div style={{ marginTop: 4, color: "#4b5563", fontSize: 13 }}>
-            Homeopathy prescription and patient instructions
-          </div>
-        </div>
-
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginBottom: 20 }}>
-          <PrintBox label="Patient" value={patientName} />
-          <PrintBox label="Date" value={formatDate(visit.visit_date)} />
-          {visit.chief_complaint && <PrintBox label="Complaint" value={visit.chief_complaint} />}
-          {visit.next_follow_up && (
-            <PrintBox label="Next follow-up" value={formatDate(visit.next_follow_up)} />
-          )}
-        </div>
-
-        <div style={{ border: "1px solid #d1d5db", borderRadius: 10, overflow: "hidden" }}>
-          <div style={{ background: "#ecfdf5", padding: "10px 12px", fontWeight: 700 }}>
-            Medicines Dispensed
-          </div>
-          <div style={{ padding: 12 }}>
-            {medicines.map((medicine) => (
-              <div
-                key={medicine}
-                style={{
-                  borderBottom: "1px solid #e5e7eb",
-                  padding: "10px 0",
-                  fontSize: 15,
-                  fontWeight: 700,
-                }}
-              >
-                {medicine}
-              </div>
-            ))}
-            {visit.dosage && (
-              <div style={{ paddingTop: 12 }}>
-                <div style={{ color: "#6b7280", fontSize: 11, fontWeight: 700 }}>DIRECTIONS</div>
-                <div style={{ marginTop: 4, whiteSpace: "pre-wrap", lineHeight: 1.5 }}>
-                  {visit.dosage}
-                </div>
-              </div>
-            )}
-          </div>
-        </div>
-
-        <div style={{ marginTop: 36, display: "flex", justifyContent: "space-between" }}>
-          <div style={{ color: "#6b7280", fontSize: 12 }}>
-            Remedy names are kept in the clinic record.
-          </div>
-          <div
-            style={{
-              borderTop: "1px solid #9ca3af",
-              minWidth: 180,
-              paddingTop: 8,
-              textAlign: "center",
-            }}
-          >
-            Doctor signature
-          </div>
-        </div>
-      </div>
-    </>
-  );
-}
-
-function PrintBox({ label, value }: { label: string; value: string }) {
-  return (
-    <div style={{ border: "1px solid #e5e7eb", borderRadius: 8, padding: 10 }}>
-      <div style={{ color: "#6b7280", fontSize: 11, fontWeight: 700 }}>{label.toUpperCase()}</div>
-      <div style={{ marginTop: 4, fontSize: 14 }}>{value}</div>
-    </div>
-  );
-}
-
-function countDispensedMedicines(prescription?: string | null) {
-  const parts = (prescription ?? "")
-    .split(/\n|;|,/)
-    .map((part) => part.trim())
-    .filter(Boolean);
-  return Math.max(1, Math.min(parts.length || 1, 12));
-}
-
 function Field({ label, value }: { label: string; value: string }) {
   return (
     <div>
@@ -802,6 +675,12 @@ function normalizePhoneForWhatsApp(raw: string) {
 
 function buildWhatsAppHref(phone: string, message: string) {
   return `https://wa.me/${normalizePhoneForWhatsApp(phone)}?text=${encodeURIComponent(message)}`;
+}
+
+function prescriptionVerifyUrl(visit: any) {
+  const token = visit.prescription_token ?? visit.id;
+  if (typeof window === "undefined") return `/prescription/${token}`;
+  return `${window.location.origin}/prescription/${token}`;
 }
 
 function buildWhatsAppMessage({
