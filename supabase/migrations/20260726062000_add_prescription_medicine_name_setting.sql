@@ -1,4 +1,28 @@
 alter table public.clinics
+  add column if not exists doctor_name text,
+  add column if not exists qualification text,
+  add column if not exists registration_no text,
+  add column if not exists phone text,
+  add column if not exists email text,
+  add column if not exists address_line1 text,
+  add column if not exists address_line2 text,
+  add column if not exists logo_data_url text,
+  add column if not exists signature_data_url text;
+
+alter table public.patient_visits
+  add column if not exists prescription_token text;
+
+update public.patient_visits
+set prescription_token = encode(gen_random_bytes(18), 'hex')
+where prescription_token is null;
+
+alter table public.patient_visits
+  alter column prescription_token set default encode(gen_random_bytes(18), 'hex');
+
+create unique index if not exists patient_visits_prescription_token_idx
+  on public.patient_visits (prescription_token);
+
+alter table public.clinics
   add column if not exists show_medicine_names_on_prescription boolean not null default false;
 
 drop function if exists public.get_public_prescription(text);
