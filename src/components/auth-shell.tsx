@@ -66,6 +66,7 @@ export function Field({
   type = "text",
   placeholder,
   autoComplete,
+  name,
   value,
   onChange,
 }: {
@@ -73,6 +74,7 @@ export function Field({
   type?: string;
   placeholder?: string;
   autoComplete?: string;
+  name?: string;
   value?: string;
   onChange?: (value: string) => void;
 }) {
@@ -80,6 +82,7 @@ export function Field({
     <label className="block">
       <span className="text-sm font-medium text-foreground">{label}</span>
       <input
+        name={name}
         type={type}
         placeholder={placeholder}
         autoComplete={autoComplete}

@@ -61,7 +61,7 @@ function AppLayout() {
           <button
             onClick={async () => {
               await signOut();
-              navigate({ to: "/" });
+              navigate({ to: "/login", replace: true });
             }}
             className="inline-flex items-center gap-1.5 rounded-full border border-border bg-card px-3 py-1.5 text-xs font-medium text-foreground transition-smooth hover:bg-muted"
           >

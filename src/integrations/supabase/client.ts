@@ -2,11 +2,23 @@
 import { createClient } from '@supabase/supabase-js';
 import type { Database } from './types';
 
+// Supabase's browser URL and publishable key are public connection details.
+// Keep these as a hosted-build fallback because Sites runtime variables are not
+// available to Vite while it creates the browser bundle.
+const HOSTED_SUPABASE_URL = 'https://hbagmtqumafbgczdnbrb.supabase.co';
+const HOSTED_SUPABASE_PUBLISHABLE_KEY =
+  'sb_publishable_WTRUowZ0ziYXqG69wyR_bA_n_feiwyb';
+
 function createSupabaseClient() {
-  // Use import.meta.env for client-side (Vite build-time replacement)
-  // Fall back to process.env for SSR (server-side rendering)
-  const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL || process.env.SUPABASE_URL;
-  const SUPABASE_PUBLISHABLE_KEY = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY || process.env.SUPABASE_PUBLISHABLE_KEY;
+  // The hosted app must always use the verified HomeoCare project. Local
+  // development may override these public browser connection details.
+  const SUPABASE_URL = import.meta.env.DEV
+    ? import.meta.env.VITE_SUPABASE_URL || HOSTED_SUPABASE_URL
+    : HOSTED_SUPABASE_URL;
+  const SUPABASE_PUBLISHABLE_KEY = import.meta.env.DEV
+    ? import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY ||
+      HOSTED_SUPABASE_PUBLISHABLE_KEY
+    : HOSTED_SUPABASE_PUBLISHABLE_KEY;
 
   if (!SUPABASE_URL || !SUPABASE_PUBLISHABLE_KEY) {
     const missing = [
@@ -37,4 +49,3 @@ export const supabase = new Proxy({} as ReturnType<typeof createSupabaseClient>,
     return Reflect.get(_supabase, prop, receiver);
   },
 });
-

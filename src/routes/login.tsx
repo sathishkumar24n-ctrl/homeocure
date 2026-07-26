@@ -1,7 +1,7 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
-import { Loader2 } from "lucide-react";
+import { KeyRound, Loader2 } from "lucide-react";
 import { AuthShell, Field, PrimaryButton, RoleToggle } from "@/components/auth-shell";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/use-auth";
@@ -20,7 +20,6 @@ function safeNext(): string | null {
   if (typeof window === "undefined") return null;
   const raw = new URLSearchParams(window.location.search).get("next");
   if (!raw) return null;
-  // Only allow same-origin relative paths
   if (!raw.startsWith("/") || raw.startsWith("//")) return null;
   return raw;
 }
@@ -32,6 +31,15 @@ function LoginPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [busy, setBusy] = useState(false);
+  const [needsConfirmation, setNeedsConfirmation] = useState(false);
+
+  const changeRole = (nextRole: "doctor" | "patient") => {
+    if (nextRole === role_) return;
+    setRole(nextRole);
+    setEmail("");
+    setPassword("");
+    setNeedsConfirmation(false);
+  };
 
   useEffect(() => {
     if (!authLoading && user) {
@@ -44,16 +52,52 @@ function LoginPage() {
     }
   }, [authLoading, user, role, navigate]);
 
+  useEffect(() => {
+    const clearLoginForm = () => {
+      setEmail("");
+      setPassword("");
+      setNeedsConfirmation(false);
+    };
+    clearLoginForm();
+    window.addEventListener("pageshow", clearLoginForm);
+    return () => window.removeEventListener("pageshow", clearLoginForm);
+  }, []);
+
   const onSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setNeedsConfirmation(false);
     setBusy(true);
     const { error } = await supabase.auth.signInWithPassword({ email, password });
+    setBusy(false);
+    if (error) {
+      if (error.message.toLowerCase().includes("email not confirmed")) {
+        setNeedsConfirmation(true);
+      }
+      toast.error(error.message);
+      return;
+    }
+    toast.success("Welcome back!");
+  };
+
+  const resendConfirmation = async () => {
+    if (!email) {
+      toast.error("Enter your email address first.");
+      return;
+    }
+    setBusy(true);
+    const { error } = await supabase.auth.resend({
+      type: "signup",
+      email,
+      options: {
+        emailRedirectTo: `${window.location.origin}/auth/callback`,
+      },
+    });
     setBusy(false);
     if (error) {
       toast.error(error.message);
       return;
     }
-    toast.success("Welcome back!");
+    toast.success("A new verification email has been sent. Please use the latest email.");
   };
 
   const onGoogle = async () => {
@@ -72,7 +116,6 @@ function LoginPage() {
     }
   };
 
-
   return (
     <AuthShell
       title="Welcome back"
@@ -86,13 +129,14 @@ function LoginPage() {
         </>
       }
     >
-      <form className="space-y-4" onSubmit={onSubmit}>
-        <RoleToggle value={role_} onChange={setRole} />
+      <form key={role_} className="space-y-4" onSubmit={onSubmit} autoComplete="off">
+        <RoleToggle value={role_} onChange={changeRole} />
         <Field
           label="Email"
           type="email"
           placeholder="you@clinic.com"
-          autoComplete="email"
+          autoComplete="off"
+          name={`${role_}-login-email`}
           value={email}
           onChange={setEmail}
         />
@@ -100,18 +144,38 @@ function LoginPage() {
           label="Password"
           type="password"
           placeholder="••••••••"
-          autoComplete="current-password"
+          autoComplete="off"
+          name={`${role_}-login-password`}
           value={password}
           onChange={setPassword}
         />
-        <div className="-mt-2 text-right">
-          <Link to="/reset-password" className="text-sm font-semibold text-primary hover:underline">
+        <div className="-mt-1 text-right">
+          <Link
+            to="/forgot-password"
+            className="inline-flex items-center gap-1 text-sm font-semibold text-primary hover:underline"
+          >
+            <KeyRound className="h-3.5 w-3.5" />
             Forgot password?
           </Link>
         </div>
         <PrimaryButton disabled={busy}>
           {busy ? <Loader2 className="mx-auto h-4 w-4 animate-spin" /> : "Sign in"}
         </PrimaryButton>
+        {needsConfirmation && (
+          <div className="rounded-xl border border-amber-200 bg-amber-50 p-4 text-center">
+            <p className="text-sm text-amber-900">
+              This account is still awaiting email verification.
+            </p>
+            <button
+              type="button"
+              onClick={resendConfirmation}
+              disabled={busy}
+              className="mt-2 text-sm font-semibold text-primary hover:underline disabled:opacity-60"
+            >
+              Resend verification email
+            </button>
+          </div>
+        )}
 
         <div className="relative my-2 flex items-center">
           <div className="flex-1 border-t border-border" />
