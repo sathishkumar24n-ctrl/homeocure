@@ -64,6 +64,7 @@ function DigitalPrescriptionPage() {
           address_line2: row.address_line2,
           logo_data_url: row.logo_data_url,
           signature_data_url: row.signature_data_url,
+          show_medicine_names_on_prescription: row.show_medicine_names_on_prescription,
         }}
         patient={{
           id: row.patient_id,
@@ -78,6 +79,7 @@ function DigitalPrescriptionPage() {
           chief_complaint: row.chief_complaint,
           dosage: row.dosage,
           next_follow_up: row.next_follow_up,
+          prescription: row.prescription,
           medicine_count: row.medicine_count,
         }}
         verifyUrl={verifyUrl}

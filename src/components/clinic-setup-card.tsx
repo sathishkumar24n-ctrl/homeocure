@@ -3,6 +3,7 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { Building2, ImagePlus, Loader2, PenLine } from "lucide-react";
 import { toast } from "sonner";
+import { Switch } from "@/components/ui/switch";
 import { useAuth } from "@/hooks/use-auth";
 import { ensureDoctorClinic } from "@/lib/clinic.functions";
 import { imageFileToDataUrl } from "@/lib/image-data-url";
@@ -22,9 +23,10 @@ export function ClinicSetupCard() {
     addressLine2: "",
     logoDataUrl: "",
     signatureDataUrl: "",
+    showMedicineNamesOnPrescription: false,
   });
 
-  const set = (key: keyof typeof form, value: string) =>
+  const set = (key: keyof typeof form, value: string | boolean) =>
     setForm((current) => ({ ...current, [key]: value }));
 
   const mutation = useMutation({
@@ -128,6 +130,11 @@ export function ClinicSetupCard() {
                 />
               </div>
 
+              <MedicineNameSetting
+                checked={form.showMedicineNamesOnPrescription}
+                onCheckedChange={(checked) => set("showMedicineNamesOnPrescription", checked)}
+              />
+
               <button
                 type="submit"
                 disabled={mutation.isPending}
@@ -140,6 +147,26 @@ export function ClinicSetupCard() {
           </div>
         </div>
       </div>
+    </div>
+  );
+}
+
+function MedicineNameSetting({
+  checked,
+  onCheckedChange,
+}: {
+  checked: boolean;
+  onCheckedChange: (checked: boolean) => void;
+}) {
+  return (
+    <div className="flex items-center justify-between gap-4 rounded-2xl border border-border/60 bg-background p-4">
+      <div>
+        <p className="text-sm font-semibold text-foreground">Show medicine names in prescription</p>
+        <p className="mt-1 text-xs text-muted-foreground">
+          Off keeps prescriptions patient-safe as Medicine 1, Medicine 2.
+        </p>
+      </div>
+      <Switch checked={checked} onCheckedChange={onCheckedChange} />
     </div>
   );
 }

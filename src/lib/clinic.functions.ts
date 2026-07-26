@@ -16,6 +16,7 @@ export const ensureDoctorClinic = createServerFn({ method: "POST" })
       addressLine2: z.string().trim().max(255).optional().nullable(),
       logoDataUrl: z.string().max(700_000).optional().nullable(),
       signatureDataUrl: z.string().max(700_000).optional().nullable(),
+      showMedicineNamesOnPrescription: z.boolean().optional(),
     }).parse,
   )
   .handler(async ({ data, context }) => {
@@ -57,6 +58,7 @@ export const ensureDoctorClinic = createServerFn({ method: "POST" })
       address_line2: nullify(data.addressLine2),
       logo_data_url: nullify(data.logoDataUrl),
       signature_data_url: nullify(data.signatureDataUrl),
+      show_medicine_names_on_prescription: data.showMedicineNamesOnPrescription === true,
     };
 
     let { data: clinic, error: clinicError } = await supabaseAdmin

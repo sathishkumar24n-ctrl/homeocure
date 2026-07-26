@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { Building2, ImagePlus, Loader2, PenLine, Save } from "lucide-react";
 import { toast } from "sonner";
 import { ClinicSetupCard } from "@/components/clinic-setup-card";
+import { Switch } from "@/components/ui/switch";
 import { useAuth } from "@/hooks/use-auth";
 import { useClinic } from "@/hooks/use-clinic";
 import { supabase } from "@/integrations/supabase/client";
@@ -32,10 +33,11 @@ function ClinicProfilePage() {
       addressLine2: clinic.address_line2 ?? "",
       logoDataUrl: clinic.logo_data_url ?? "",
       signatureDataUrl: clinic.signature_data_url ?? "",
+      showMedicineNamesOnPrescription: clinic.show_medicine_names_on_prescription === true,
     });
   }, [clinic]);
 
-  const set = (key: keyof typeof form, value: string) =>
+  const set = (key: keyof typeof form, value: string | boolean) =>
     setForm((current) => ({ ...current, [key]: value }));
 
   const save = useMutation({
@@ -54,6 +56,7 @@ function ClinicProfilePage() {
           address_line2: nullify(form.addressLine2),
           logo_data_url: nullify(form.logoDataUrl),
           signature_data_url: nullify(form.signatureDataUrl),
+          show_medicine_names_on_prescription: form.showMedicineNamesOnPrescription,
         })
         .eq("id", clinic.id);
       if (error) throw error;
@@ -166,6 +169,11 @@ function ClinicProfilePage() {
           />
         </div>
 
+        <MedicineNameSetting
+          checked={form.showMedicineNamesOnPrescription}
+          onCheckedChange={(checked) => set("showMedicineNamesOnPrescription", checked)}
+        />
+
         <button
           type="submit"
           disabled={save.isPending || !form.clinicName.trim()}
@@ -194,7 +202,28 @@ const defaultForm = {
   addressLine2: "",
   logoDataUrl: "",
   signatureDataUrl: "",
+  showMedicineNamesOnPrescription: false,
 };
+
+function MedicineNameSetting({
+  checked,
+  onCheckedChange,
+}: {
+  checked: boolean;
+  onCheckedChange: (checked: boolean) => void;
+}) {
+  return (
+    <div className="flex items-center justify-between gap-4 rounded-2xl border border-border/60 bg-background p-4">
+      <div>
+        <p className="text-sm font-semibold text-foreground">Show medicine names in prescription</p>
+        <p className="mt-1 text-xs text-muted-foreground">
+          Off keeps printed and QR prescriptions privacy-friendly as Medicine 1, Medicine 2.
+        </p>
+      </div>
+      <Switch checked={checked} onCheckedChange={onCheckedChange} />
+    </div>
+  );
+}
 
 function ProfileField({
   label,

@@ -64,6 +64,7 @@ export type Database = {
           phone: string | null;
           qualification: string | null;
           registration_no: string | null;
+          show_medicine_names_on_prescription: boolean;
           signature_data_url: string | null;
         };
         Insert: {
@@ -79,6 +80,7 @@ export type Database = {
           phone?: string | null;
           qualification?: string | null;
           registration_no?: string | null;
+          show_medicine_names_on_prescription?: boolean;
           signature_data_url?: string | null;
         };
         Update: {
@@ -94,6 +96,7 @@ export type Database = {
           phone?: string | null;
           qualification?: string | null;
           registration_no?: string | null;
+          show_medicine_names_on_prescription?: boolean;
           signature_data_url?: string | null;
         };
         Relationships: [];
@@ -506,8 +509,10 @@ export type Database = {
           patient_id: string;
           patient_name: string;
           patient_phone: string | null;
+          prescription: string | null;
           qualification: string | null;
           registration_no: string | null;
+          show_medicine_names_on_prescription: boolean;
           signature_data_url: string | null;
           visit_date: string;
         }[];

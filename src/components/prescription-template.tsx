@@ -9,6 +9,7 @@ type ClinicBranding = {
   address_line2?: string | null;
   logo_data_url?: string | null;
   signature_data_url?: string | null;
+  show_medicine_names_on_prescription?: boolean | null;
 };
 
 type PatientDetails = {
@@ -42,10 +43,8 @@ export function PrescriptionTemplate({
   verifyUrl: string;
   printRoot?: boolean;
 }) {
-  const medicines = Array.from(
-    { length: countDispensedMedicines(visit.prescription, visit.medicine_count) },
-    (_, index) => `Medicine ${index + 1}`,
-  );
+  const showMedicineNames = clinic.show_medicine_names_on_prescription === true;
+  const medicines = prescriptionRows(visit.prescription, visit.medicine_count, showMedicineNames);
   const rows = [
     ...medicines,
     ...Array.from({ length: Math.max(0, 5 - medicines.length) }, () => ""),
@@ -500,6 +499,24 @@ function countDispensedMedicines(prescription?: string | null, explicitCount?: n
     .map((part) => part.trim())
     .filter(Boolean);
   return Math.max(1, Math.min(parts.length || 1, 12));
+}
+
+function prescriptionRows(
+  prescription?: string | null,
+  explicitCount?: number | null,
+  showMedicineNames?: boolean,
+) {
+  const count = countDispensedMedicines(prescription, explicitCount);
+  const parsedNames = (prescription ?? "")
+    .split(/\n|;|,/)
+    .map((part) => part.trim())
+    .filter(Boolean)
+    .slice(0, 12);
+
+  return Array.from({ length: count }, (_, index) => {
+    if (showMedicineNames && parsedNames[index]) return parsedNames[index];
+    return `Medicine ${index + 1}`;
+  });
 }
 
 function qrCodeUrl(value: string) {
