@@ -42,30 +42,34 @@ function ClinicProfilePage() {
   const set = (key: keyof typeof form, value: string | boolean) =>
     setForm((current) => ({ ...current, [key]: value }));
 
+  const saveClinicProfile = async () => {
+    if (!clinic?.id) throw new Error("Clinic profile not found");
+    const { error } = await supabase
+      .from("clinics")
+      .update({
+        name: form.clinicName.trim(),
+        doctor_name: nullify(form.doctorName),
+        qualification: nullify(form.qualification),
+        registration_no: nullify(form.registrationNo),
+        phone: nullify(form.phone),
+        email: nullify(form.email),
+        address_line1: nullify(form.addressLine1),
+        address_line2: nullify(form.addressLine2),
+        logo_data_url: nullify(form.logoDataUrl),
+        signature_data_url: nullify(form.signatureDataUrl),
+        show_medicine_names_on_prescription: form.showMedicineNamesOnPrescription,
+      })
+      .eq("id", clinic.id);
+    if (error) throw error;
+    await qc.invalidateQueries({ queryKey: ["clinic", user?.id] });
+  };
+
   const save = useMutation({
     mutationFn: async () => {
-      if (!clinic?.id) throw new Error("Clinic profile not found");
-      const { error } = await supabase
-        .from("clinics")
-        .update({
-          name: form.clinicName.trim(),
-          doctor_name: nullify(form.doctorName),
-          qualification: nullify(form.qualification),
-          registration_no: nullify(form.registrationNo),
-          phone: nullify(form.phone),
-          email: nullify(form.email),
-          address_line1: nullify(form.addressLine1),
-          address_line2: nullify(form.addressLine2),
-          logo_data_url: nullify(form.logoDataUrl),
-          signature_data_url: nullify(form.signatureDataUrl),
-          show_medicine_names_on_prescription: form.showMedicineNamesOnPrescription,
-        })
-        .eq("id", clinic.id);
-      if (error) throw error;
+      await saveClinicProfile();
     },
     onSuccess: () => {
       toast.success("Clinic profile saved");
-      qc.invalidateQueries({ queryKey: ["clinic", user?.id] });
     },
     onError: (e: Error) => toast.error(e.message),
   });
@@ -183,6 +187,7 @@ function ClinicProfilePage() {
           otpSentTo={otpSentTo}
           onOtpCodeChange={setOtpCode}
           onOtpSentToChange={setOtpSentTo}
+          onSaveProfile={saveClinicProfile}
         />
 
         <button
@@ -243,6 +248,7 @@ function DoctorOtpLoginSetup({
   otpSentTo,
   onOtpCodeChange,
   onOtpSentToChange,
+  onSaveProfile,
 }: {
   phone: string;
   authPhone: string;
@@ -250,6 +256,7 @@ function DoctorOtpLoginSetup({
   otpSentTo: string;
   onOtpCodeChange: (value: string) => void;
   onOtpSentToChange: (value: string) => void;
+  onSaveProfile: () => Promise<void>;
 }) {
   const [busy, setBusy] = useState(false);
   const normalizedPhone = normalizePhone(phone);
@@ -262,6 +269,13 @@ function DoctorOtpLoginSetup({
       return;
     }
     setBusy(true);
+    try {
+      await onSaveProfile();
+    } catch (error) {
+      setBusy(false);
+      toast.error(error instanceof Error ? error.message : "Clinic profile could not be saved.");
+      return;
+    }
     const { error } = await supabase.auth.updateUser({ phone: normalizedPhone });
     setBusy(false);
     if (error) {
@@ -289,6 +303,7 @@ function DoctorOtpLoginSetup({
       toast.error(formatOtpVerifyError(error.message));
       return;
     }
+    await supabase.auth.refreshSession();
     onOtpSentToChange("");
     onOtpCodeChange("");
     toast.success("Doctor mobile OTP login is enabled for this number.");
