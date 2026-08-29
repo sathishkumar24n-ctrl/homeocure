@@ -1,7 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useState } from "react";
-import { Building2, ImagePlus, Loader2, PenLine, Save } from "lucide-react";
+import { Building2, ImagePlus, Loader2, PenLine, Save, Smartphone } from "lucide-react";
 import { toast } from "sonner";
 import { ClinicSetupCard } from "@/components/clinic-setup-card";
 import { Switch } from "@/components/ui/switch";
@@ -19,6 +19,8 @@ function ClinicProfilePage() {
   const { data: clinic, isLoading } = useClinic();
   const qc = useQueryClient();
   const [form, setForm] = useState(defaultForm);
+  const [otpCode, setOtpCode] = useState("");
+  const [otpSentTo, setOtpSentTo] = useState("");
 
   useEffect(() => {
     if (!clinic) return;
@@ -174,6 +176,15 @@ function ClinicProfilePage() {
           onCheckedChange={(checked) => set("showMedicineNamesOnPrescription", checked)}
         />
 
+        <DoctorOtpLoginSetup
+          phone={form.phone}
+          authPhone={user?.phone ?? ""}
+          otpCode={otpCode}
+          otpSentTo={otpSentTo}
+          onOtpCodeChange={setOtpCode}
+          onOtpSentToChange={setOtpSentTo}
+        />
+
         <button
           type="submit"
           disabled={save.isPending || !form.clinicName.trim()}
@@ -221,6 +232,116 @@ function MedicineNameSetting({
         </p>
       </div>
       <Switch checked={checked} onCheckedChange={onCheckedChange} />
+    </div>
+  );
+}
+
+function DoctorOtpLoginSetup({
+  phone,
+  authPhone,
+  otpCode,
+  otpSentTo,
+  onOtpCodeChange,
+  onOtpSentToChange,
+}: {
+  phone: string;
+  authPhone: string;
+  otpCode: string;
+  otpSentTo: string;
+  onOtpCodeChange: (value: string) => void;
+  onOtpSentToChange: (value: string) => void;
+}) {
+  const [busy, setBusy] = useState(false);
+  const normalizedPhone = normalizePhone(phone);
+  const normalizedAuthPhone = normalizePhone(authPhone);
+  const isEnabled = Boolean(normalizedPhone && normalizedPhone === normalizedAuthPhone);
+
+  const sendOtp = async () => {
+    if (!normalizedPhone) {
+      toast.error("Enter the clinic phone with country code first, for example +91XXXXXXXXXX.");
+      return;
+    }
+    setBusy(true);
+    const { error } = await supabase.auth.updateUser({ phone: normalizedPhone });
+    setBusy(false);
+    if (error) {
+      toast.error(formatOtpSetupError(error.message));
+      return;
+    }
+    onOtpSentToChange(normalizedPhone);
+    onOtpCodeChange("");
+    toast.success("OTP sent. Enter the code to enable doctor mobile login.");
+  };
+
+  const verifyOtp = async () => {
+    if (!otpSentTo || !otpCode.trim()) {
+      toast.error("Enter the OTP sent to your mobile.");
+      return;
+    }
+    setBusy(true);
+    const { error } = await supabase.auth.verifyOtp({
+      phone: otpSentTo,
+      token: otpCode.trim(),
+      type: "phone_change",
+    });
+    setBusy(false);
+    if (error) {
+      toast.error(formatOtpVerifyError(error.message));
+      return;
+    }
+    onOtpSentToChange("");
+    onOtpCodeChange("");
+    toast.success("Doctor mobile OTP login is enabled for this number.");
+  };
+
+  return (
+    <div className="rounded-2xl border border-border/60 bg-background p-4">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+        <div className="flex gap-3">
+          <div className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-secondary text-primary">
+            <Smartphone className="h-4 w-4" />
+          </div>
+          <div>
+            <p className="text-sm font-semibold text-foreground">Doctor mobile OTP login</p>
+            <p className="mt-1 text-xs text-muted-foreground">
+              Saved clinic phone: {normalizedPhone || "not set"}
+              {isEnabled ? " - OTP login enabled" : " - OTP login not enabled"}
+            </p>
+          </div>
+        </div>
+        <button
+          type="button"
+          onClick={sendOtp}
+          disabled={busy || !normalizedPhone || isEnabled}
+          className="inline-flex items-center justify-center gap-2 rounded-xl border border-border bg-card px-3 py-2 text-xs font-semibold text-foreground transition-smooth hover:bg-muted disabled:opacity-60"
+        >
+          {busy && !otpSentTo ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : null}
+          {isEnabled ? "Enabled" : otpSentTo ? "Resend OTP" : "Enable OTP"}
+        </button>
+      </div>
+
+      {otpSentTo && (
+        <div className="mt-4 grid gap-3 sm:grid-cols-[1fr_auto]">
+          <input
+            type="text"
+            inputMode="numeric"
+            autoComplete="one-time-code"
+            value={otpCode}
+            onChange={(e) => onOtpCodeChange(e.target.value)}
+            placeholder="6 digit OTP"
+            className="w-full rounded-xl border border-input bg-card px-3 py-2.5 text-sm focus:border-ring focus:outline-none focus:ring-2 focus:ring-ring/30"
+          />
+          <button
+            type="button"
+            onClick={verifyOtp}
+            disabled={busy || !otpCode.trim()}
+            className="inline-flex items-center justify-center gap-2 rounded-xl bg-gradient-primary px-4 py-2.5 text-sm font-semibold text-primary-foreground shadow-soft transition-smooth hover:shadow-elevated disabled:opacity-60"
+          >
+            {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
+            Verify
+          </button>
+        </div>
+      )}
     </div>
   );
 }
@@ -310,4 +431,30 @@ function ImageUpload({
 function nullify(value: string) {
   const trimmed = value.trim();
   return trimmed ? trimmed : null;
+}
+
+function normalizePhone(value: string) {
+  const trimmed = value.trim();
+  if (!trimmed) return "";
+  const digits = trimmed.replace(/[^\d]/g, "");
+  if (trimmed.startsWith("+") && digits.length >= 8) return `+${digits}`;
+  if (digits.length === 10) return `+91${digits}`;
+  if (digits.length > 10) return `+${digits}`;
+  return "";
+}
+
+function formatOtpSetupError(message: string) {
+  const lower = message.toLowerCase();
+  if (lower.includes("provider") || lower.includes("sms") || lower.includes("otp")) {
+    return "Mobile OTP is not enabled in Supabase yet. Enable Phone Auth and configure an SMS provider.";
+  }
+  return message;
+}
+
+function formatOtpVerifyError(message: string) {
+  const lower = message.toLowerCase();
+  if (lower.includes("expired") || lower.includes("invalid")) {
+    return "OTP is invalid or expired. Please request a new code.";
+  }
+  return message;
 }
