@@ -94,7 +94,7 @@ function LoginPage() {
         });
         setBusy(false);
         if (error) {
-          toast.error(formatOtpLoginError(error.message));
+          toast.error(formatOtpLoginError(error.message, role_));
           return;
         }
         setPhone(normalizedPhone);
@@ -366,9 +366,12 @@ function normalizePhone(value: string) {
   return "";
 }
 
-function formatOtpLoginError(message: string) {
+function formatOtpLoginError(message: string, selectedRole: "doctor" | "patient") {
   const lower = message.toLowerCase();
   if (lower.includes("signup") || lower.includes("signups")) {
+    if (selectedRole === "doctor") {
+      return "Doctor mobile OTP is not enabled for this number yet. Sign in with email, open Clinic profile, and enable Doctor mobile OTP login.";
+    }
     return "No mobile OTP account found for this number. Please create the patient account with Mobile OTP first.";
   }
   if (lower.includes("provider") || lower.includes("sms")) {
