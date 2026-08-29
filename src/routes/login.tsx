@@ -94,7 +94,7 @@ function LoginPage() {
         });
         setBusy(false);
         if (error) {
-          toast.error(error.message);
+          toast.error(formatOtpLoginError(error.message));
           return;
         }
         setPhone(normalizedPhone);
@@ -110,7 +110,7 @@ function LoginPage() {
       });
       setBusy(false);
       if (error) {
-        toast.error(error.message);
+        toast.error(formatOtpVerifyError(error.message));
         return;
       }
       toast.success("Welcome back!");
@@ -364,4 +364,23 @@ function normalizePhone(value: string) {
   if (digits.length === 10) return `+91${digits}`;
   if (digits.length > 10) return `+${digits}`;
   return "";
+}
+
+function formatOtpLoginError(message: string) {
+  const lower = message.toLowerCase();
+  if (lower.includes("signup") || lower.includes("signups")) {
+    return "No mobile OTP account found for this number. Please create the patient account with Mobile OTP first.";
+  }
+  if (lower.includes("provider") || lower.includes("sms")) {
+    return "Mobile OTP is not enabled in Supabase yet. Enable Phone Auth and configure an SMS provider.";
+  }
+  return message;
+}
+
+function formatOtpVerifyError(message: string) {
+  const lower = message.toLowerCase();
+  if (lower.includes("expired") || lower.includes("invalid")) {
+    return "OTP is invalid or expired. Please request a new code.";
+  }
+  return message;
 }
