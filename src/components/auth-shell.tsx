@@ -69,6 +69,7 @@ export function Field({
   name,
   value,
   onChange,
+  required = true,
 }: {
   label: string;
   type?: string;
@@ -77,6 +78,7 @@ export function Field({
   name?: string;
   value?: string;
   onChange?: (value: string) => void;
+  required?: boolean;
 }) {
   return (
     <label className="block">
@@ -88,7 +90,7 @@ export function Field({
         autoComplete={autoComplete}
         value={value}
         onChange={(e) => onChange?.(e.target.value)}
-        required
+        required={required}
         className="mt-1.5 block w-full rounded-xl border border-input bg-background px-4 py-3 text-sm text-foreground placeholder:text-muted-foreground/70 focus:border-ring focus:outline-none focus:ring-2 focus:ring-ring/30"
       />
     </label>
