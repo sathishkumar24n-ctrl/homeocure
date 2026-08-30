@@ -1,8 +1,9 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
-import { useEffect } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useEffect, useMemo } from "react";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   ArrowRight,
+  AlertTriangle,
   Building2,
   CalendarCheck,
   CheckCircle2,
@@ -15,6 +16,7 @@ import {
   Stethoscope,
   Users,
 } from "lucide-react";
+import { toast } from "sonner";
 import { useAuth } from "@/hooks/use-auth";
 import { useClinic } from "@/hooks/use-clinic";
 import { supabase } from "@/integrations/supabase/client";
@@ -30,8 +32,41 @@ type DashboardAppointment = {
   patient_id: string;
   scheduled_at: string;
   duration_minutes: number;
+  status?: AppointmentStatus;
   reason: string | null;
   patient: { id: string; full_name: string; phone: string | null } | null;
+};
+
+type AppointmentStatus = "scheduled" | "completed" | "cancelled" | "no_show";
+
+type FollowUpVisit = {
+  id: string;
+  patient_id: string;
+  visit_date: string;
+  next_follow_up: string;
+  chief_complaint: string | null;
+  patients?: { id?: string; full_name: string; phone: string | null } | null;
+};
+
+type AttentionSourceType =
+  "appointment" | "follow_up" | "missed_follow_up" | "no_show" | "needs_closure";
+
+type AttentionItem = {
+  id: string;
+  sourceType: AttentionSourceType;
+  patientId: string | null;
+  patientName: string;
+  phone: string | null;
+  title: string;
+  reason: string;
+  dueAt: string;
+  priority: number;
+  appointmentId?: string;
+  visitId?: string;
+  durationMinutes?: number;
+  canRecordVisit?: boolean;
+  canComplete?: boolean;
+  canMarkNoShow?: boolean;
 };
 
 function todayBounds() {
@@ -63,6 +98,7 @@ function DoctorDashboard() {
   const { user, role, loading } = useAuth();
   const { data: clinic, isLoading: clinicLoading } = useClinic();
   const navigate = useNavigate();
+  const qc = useQueryClient();
 
   useEffect(() => {
     if (!loading && role === "patient") {
@@ -139,6 +175,78 @@ function DoctorDashboard() {
     },
   });
 
+  const attentionAppointments = useQuery({
+    queryKey: ["attention-appointments", clinic?.id],
+    enabled: !!clinic?.id,
+    queryFn: async () => {
+      const { end } = todayBounds();
+      const { data, error } = await supabase
+        .from("appointments")
+        .select("id, patient_id, scheduled_at, duration_minutes, status, reason")
+        .eq("clinic_id", clinic!.id)
+        .in("status", ["scheduled", "no_show"])
+        .lt("scheduled_at", end.toISOString())
+        .order("scheduled_at", { ascending: true })
+        .limit(100);
+      if (error) throw error;
+      return attachPatients(data ?? []);
+    },
+  });
+
+  const attentionFollowUps = useQuery({
+    queryKey: ["attention-follow-ups", clinic?.id],
+    enabled: !!clinic?.id,
+    queryFn: async () => {
+      const today = localDateKey(new Date());
+      const { data, error } = await supabase
+        .from("patient_visits")
+        .select(
+          "id, patient_id, visit_date, next_follow_up, chief_complaint, patients!inner(id, full_name, phone)",
+        )
+        .eq("clinic_id", clinic!.id)
+        .not("next_follow_up", "is", null)
+        .lte("next_follow_up", today)
+        .order("next_follow_up", { ascending: true })
+        .limit(100);
+      if (error) throw error;
+      return (data ?? []) as unknown as FollowUpVisit[];
+    },
+  });
+
+  const attentionReminders = useQuery({
+    queryKey: ["attention-reminders", clinic?.id],
+    enabled: !!clinic?.id,
+    queryFn: async () => {
+      const sevenDaysAgo = new Date();
+      sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+      const { data, error } = await supabase
+        .from("follow_up_reminders")
+        .select("visit_id, status, sent_at")
+        .eq("clinic_id", clinic!.id)
+        .eq("status", "sent")
+        .gte("sent_at", sevenDaysAgo.toISOString())
+        .limit(200);
+      if (error) throw error;
+      return data ?? [];
+    },
+  });
+
+  const setAppointmentStatus = useMutation({
+    mutationFn: async ({ id, status }: { id: string; status: AppointmentStatus }) => {
+      const { error } = await supabase.from("appointments").update({ status }).eq("id", id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      toast.success("Appointment updated");
+      qc.invalidateQueries({ queryKey: ["attention-appointments", clinic?.id] });
+      qc.invalidateQueries({ queryKey: ["appointments", clinic?.id] });
+      qc.invalidateQueries({ queryKey: ["today-appointments-count", clinic?.id] });
+      qc.invalidateQueries({ queryKey: ["today-appointments", clinic?.id] });
+      qc.invalidateQueries({ queryKey: ["upcoming-appointments", clinic?.id] });
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
   const lowStockCount = useQuery({
     queryKey: ["low-stock-count", clinic?.id],
     enabled: !!clinic?.id,
@@ -179,6 +287,23 @@ function DoctorDashboard() {
       return count ?? 0;
     },
   });
+
+  const attentionItems = useMemo(
+    () =>
+      buildAttentionItems({
+        appointments: attentionAppointments.data ?? [],
+        followUps: attentionFollowUps.data ?? [],
+        recentlyRemindedVisitIds: new Set(
+          (attentionReminders.data ?? [])
+            .map((reminder) => reminder.visit_id)
+            .filter((id): id is string => Boolean(id)),
+        ),
+      }),
+    [attentionAppointments.data, attentionFollowUps.data, attentionReminders.data],
+  );
+
+  const attentionLoading =
+    attentionAppointments.isLoading || attentionFollowUps.isLoading || attentionReminders.isLoading;
 
   const tiles = [
     {
@@ -369,6 +494,13 @@ function DoctorDashboard() {
         })}
       </div>
 
+      <AttentionQueue
+        loading={attentionLoading}
+        items={attentionItems}
+        updatingAppointmentId={setAppointmentStatus.variables?.id}
+        onSetAppointmentStatus={(id, status) => setAppointmentStatus.mutate({ id, status })}
+      />
+
       <section className="mt-6 grid gap-4 lg:grid-cols-2">
         <AppointmentPanel
           title="Today's appointment queue"
@@ -438,6 +570,172 @@ function AppointmentPanel({
   );
 }
 
+function AttentionQueue({
+  loading,
+  items,
+  updatingAppointmentId,
+  onSetAppointmentStatus,
+}: {
+  loading: boolean;
+  items: AttentionItem[];
+  updatingAppointmentId?: string;
+  onSetAppointmentStatus: (id: string, status: AppointmentStatus) => void;
+}) {
+  const urgentCount = items.filter((item) => item.priority <= 2).length;
+
+  return (
+    <section className="mt-6 rounded-3xl border border-border/60 bg-card p-5 shadow-card sm:p-6">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+        <div>
+          <p className="text-xs font-semibold uppercase tracking-wide text-primary">
+            Daily command center
+          </p>
+          <h2 className="mt-1 text-xl font-bold tracking-tight">
+            Patients requiring attention today
+          </h2>
+          <p className="mt-1 max-w-2xl text-sm text-muted-foreground">
+            Follow-ups, appointments, missed visits, and appointments that still need closure.
+          </p>
+        </div>
+        <div className="rounded-full bg-secondary px-3 py-1 text-xs font-semibold text-secondary-foreground">
+          {items.length} active{urgentCount > 0 ? ` · ${urgentCount} urgent` : ""}
+        </div>
+      </div>
+
+      {loading ? (
+        <div className="mt-4 rounded-2xl border border-border/60 bg-background p-6 text-center text-sm text-muted-foreground">
+          Loading today&apos;s attention queue...
+        </div>
+      ) : items.length === 0 ? (
+        <div className="mt-4 rounded-2xl border border-dashed border-border bg-background/60 p-8 text-center">
+          <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-2xl bg-secondary text-secondary-foreground">
+            <CheckCircle2 className="h-6 w-6" />
+          </div>
+          <p className="mt-3 text-sm font-semibold text-foreground">No pending patient actions</p>
+          <p className="mt-1 text-xs text-muted-foreground">Today&apos;s clinic queue is clear.</p>
+        </div>
+      ) : (
+        <div className="mt-4 space-y-2">
+          {items.map((item) => (
+            <AttentionQueueCard
+              key={item.id}
+              item={item}
+              updatingAppointmentId={updatingAppointmentId}
+              onSetAppointmentStatus={onSetAppointmentStatus}
+            />
+          ))}
+        </div>
+      )}
+    </section>
+  );
+}
+
+function AttentionQueueCard({
+  item,
+  updatingAppointmentId,
+  onSetAppointmentStatus,
+}: {
+  item: AttentionItem;
+  updatingAppointmentId?: string;
+  onSetAppointmentStatus: (id: string, status: AppointmentStatus) => void;
+}) {
+  const patientRoute = item.patientId ? `/app/patients/${item.patientId}` : undefined;
+  const recordVisitHref =
+    item.patientId && item.canRecordVisit
+      ? `/app/patients/${item.patientId}?newVisit=1${
+          item.appointmentId ? `&appointmentId=${item.appointmentId}` : ""
+        }`
+      : undefined;
+  const whatsappHref = item.phone
+    ? buildWhatsAppHref(item.phone, buildAttentionWhatsAppMessage(item))
+    : undefined;
+
+  return (
+    <div className="rounded-2xl border border-border/60 bg-background p-4">
+      <div className="flex flex-col gap-3 lg:flex-row lg:items-center">
+        <div className="flex items-start gap-3 lg:flex-1">
+          <div
+            className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-xl ${
+              item.priority <= 2
+                ? "bg-destructive/10 text-destructive"
+                : "bg-secondary text-secondary-foreground"
+            }`}
+          >
+            {item.priority <= 2 ? (
+              <AlertTriangle className="h-5 w-5" />
+            ) : (
+              <Clock className="h-5 w-5" />
+            )}
+          </div>
+          <div className="min-w-0">
+            <div className="flex flex-wrap items-center gap-2">
+              <p className="font-semibold text-foreground">{item.patientName}</p>
+              <span className={attentionBadgeClass(item.sourceType)}>
+                {attentionLabel(item.sourceType)}
+              </span>
+            </div>
+            <p className="mt-1 text-sm text-foreground">{item.title}</p>
+            <p className="mt-0.5 text-xs text-muted-foreground">
+              {formatAttentionDue(item.dueAt, item.sourceType)}
+              {item.reason ? ` · ${item.reason}` : ""}
+              {!item.phone ? " · no WhatsApp number" : ""}
+            </p>
+          </div>
+        </div>
+
+        <div className="flex flex-wrap gap-2 lg:justify-end">
+          {patientRoute && (
+            <a
+              href={patientRoute}
+              className="inline-flex h-9 items-center gap-1.5 rounded-full border border-border bg-card px-3 text-xs font-semibold text-foreground transition-smooth hover:bg-muted"
+            >
+              <FileText className="h-3.5 w-3.5" /> Case
+            </a>
+          )}
+          {recordVisitHref && (
+            <a
+              href={recordVisitHref}
+              className="inline-flex h-9 items-center gap-1.5 rounded-full bg-gradient-primary px-3 text-xs font-semibold text-primary-foreground shadow-soft"
+            >
+              <Stethoscope className="h-3.5 w-3.5" /> Record visit
+            </a>
+          )}
+          {whatsappHref && (
+            <a
+              href={whatsappHref}
+              target="_blank"
+              rel="noreferrer"
+              className="inline-flex h-9 items-center gap-1.5 rounded-full border border-border bg-card px-3 text-xs font-semibold text-foreground transition-smooth hover:bg-muted"
+            >
+              <MessageCircle className="h-3.5 w-3.5" /> WhatsApp
+            </a>
+          )}
+          {item.appointmentId && item.canComplete && (
+            <button
+              type="button"
+              onClick={() => onSetAppointmentStatus(item.appointmentId!, "completed")}
+              disabled={updatingAppointmentId === item.appointmentId}
+              className="inline-flex h-9 items-center gap-1.5 rounded-full border border-primary/30 bg-primary/10 px-3 text-xs font-semibold text-primary transition-smooth hover:bg-primary/15 disabled:opacity-60"
+            >
+              <CheckCircle2 className="h-3.5 w-3.5" /> Complete
+            </button>
+          )}
+          {item.appointmentId && item.canMarkNoShow && (
+            <button
+              type="button"
+              onClick={() => onSetAppointmentStatus(item.appointmentId!, "no_show")}
+              disabled={updatingAppointmentId === item.appointmentId}
+              className="inline-flex h-9 items-center gap-1.5 rounded-full border border-destructive/25 bg-destructive/10 px-3 text-xs font-semibold text-destructive transition-smooth hover:bg-destructive/15 disabled:opacity-60"
+            >
+              No-show
+            </button>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function DashboardAppointmentCard({
   appointment,
   showVisitAction,
@@ -492,4 +790,201 @@ function DashboardAppointmentCard({
       </div>
     </div>
   );
+}
+
+function buildAttentionItems({
+  appointments,
+  followUps,
+  recentlyRemindedVisitIds,
+}: {
+  appointments: DashboardAppointment[];
+  followUps: FollowUpVisit[];
+  recentlyRemindedVisitIds: Set<string>;
+}) {
+  const now = new Date();
+  const { start, end } = todayBounds();
+  const todayKey = localDateKey(now);
+  const rows: AttentionItem[] = [];
+  const patientAppointmentToday = new Set<string>();
+  const dueFollowUpByPatient = new Map<string, FollowUpVisit>();
+
+  for (const visit of followUps) {
+    const current = dueFollowUpByPatient.get(visit.patient_id);
+    if (!current || visit.next_follow_up < current.next_follow_up) {
+      dueFollowUpByPatient.set(visit.patient_id, visit);
+    }
+  }
+
+  for (const appointment of appointments) {
+    const due = new Date(appointment.scheduled_at);
+    const patient = appointment.patient;
+    const linkedFollowUp = dueFollowUpByPatient.get(appointment.patient_id);
+    const isToday = due >= start && due < end;
+    const isPastDay = due < start;
+    const isPastTime =
+      appointment.status === "scheduled" &&
+      due.getTime() + appointment.duration_minutes * 60000 < now.getTime();
+
+    if (appointment.status === "no_show") {
+      rows.push({
+        id: `appointment-no-show-${appointment.id}`,
+        sourceType: "no_show",
+        patientId: patient?.id ?? appointment.patient_id,
+        patientName: patient?.full_name ?? "Unknown patient",
+        phone: patient?.phone ?? null,
+        title: "No-show appointment needs follow-up",
+        reason: appointment.reason ?? "Reschedule or close this missed appointment",
+        dueAt: appointment.scheduled_at,
+        priority: 1,
+        appointmentId: appointment.id,
+        durationMinutes: appointment.duration_minutes,
+        canRecordVisit: Boolean(patient),
+        canComplete: Boolean(patient),
+      });
+      continue;
+    }
+
+    if (isPastDay) {
+      rows.push({
+        id: `appointment-closure-${appointment.id}`,
+        sourceType: "needs_closure",
+        patientId: patient?.id ?? appointment.patient_id,
+        patientName: patient?.full_name ?? "Unknown patient",
+        phone: patient?.phone ?? null,
+        title: "Past appointment still needs closure",
+        reason: appointment.reason ?? "Mark completed, no-show, or record the visit",
+        dueAt: appointment.scheduled_at,
+        priority: 2,
+        appointmentId: appointment.id,
+        durationMinutes: appointment.duration_minutes,
+        canRecordVisit: Boolean(patient),
+        canComplete: true,
+        canMarkNoShow: true,
+      });
+      continue;
+    }
+
+    if (isToday) {
+      if (patient?.id) patientAppointmentToday.add(patient.id);
+      rows.push({
+        id: `appointment-today-${appointment.id}`,
+        sourceType: "appointment",
+        patientId: patient?.id ?? appointment.patient_id,
+        patientName: patient?.full_name ?? "Unknown patient",
+        phone: patient?.phone ?? null,
+        title: isPastTime ? "Scheduled appointment is due now" : "Scheduled appointment today",
+        reason: attentionReason(appointment.reason, linkedFollowUp?.chief_complaint),
+        dueAt: appointment.scheduled_at,
+        priority: isPastTime ? 2 : 4,
+        appointmentId: appointment.id,
+        durationMinutes: appointment.duration_minutes,
+        canRecordVisit: Boolean(patient),
+        canComplete: false,
+        canMarkNoShow: isPastTime,
+      });
+    }
+  }
+
+  for (const visit of followUps) {
+    const patient = visit.patients;
+    const sourceType: AttentionSourceType =
+      visit.next_follow_up < todayKey ? "missed_follow_up" : "follow_up";
+    const hasAppointmentToday = patient?.id ? patientAppointmentToday.has(patient.id) : false;
+    if (sourceType === "missed_follow_up" && recentlyRemindedVisitIds.has(visit.id)) continue;
+    if (hasAppointmentToday) continue;
+
+    rows.push({
+      id: `${sourceType}-${visit.id}`,
+      sourceType,
+      patientId: patient?.id ?? visit.patient_id,
+      patientName: patient?.full_name ?? "Unknown patient",
+      phone: patient?.phone ?? null,
+      title:
+        sourceType === "missed_follow_up"
+          ? "Overdue follow-up"
+          : hasAppointmentToday
+            ? "Follow-up due today with appointment booked"
+            : "Follow-up due today",
+      reason: visit.chief_complaint ?? "Review patient progress",
+      dueAt: visit.next_follow_up,
+      priority: sourceType === "missed_follow_up" ? 1 : hasAppointmentToday ? 3 : 2,
+      visitId: visit.id,
+      canRecordVisit: Boolean(patient),
+    });
+  }
+
+  return rows.sort((a, b) => {
+    if (a.priority !== b.priority) return a.priority - b.priority;
+    return new Date(a.dueAt).getTime() - new Date(b.dueAt).getTime();
+  });
+}
+
+function attentionReason(appointmentReason?: string | null, followUpComplaint?: string | null) {
+  const parts = [
+    appointmentReason?.trim(),
+    followUpComplaint?.trim() ? `Follow-up: ${followUpComplaint.trim()}` : null,
+  ].filter(Boolean);
+  return parts.join(" · ") || "Open case or record visit";
+}
+
+function localDateKey(date: Date) {
+  const pad = (value: number) => String(value).padStart(2, "0");
+  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`;
+}
+
+function attentionLabel(sourceType: AttentionSourceType) {
+  if (sourceType === "appointment") return "Today";
+  if (sourceType === "follow_up") return "Follow-up";
+  if (sourceType === "missed_follow_up") return "Overdue";
+  if (sourceType === "no_show") return "No-show";
+  return "Needs closure";
+}
+
+function attentionBadgeClass(sourceType: AttentionSourceType) {
+  const base = "rounded-full px-2 py-0.5 text-[10px] font-semibold";
+  if (sourceType === "missed_follow_up" || sourceType === "no_show") {
+    return `${base} bg-destructive/10 text-destructive`;
+  }
+  if (sourceType === "needs_closure") return `${base} bg-amber-100 text-amber-800`;
+  if (sourceType === "follow_up") return `${base} bg-primary/10 text-primary`;
+  return `${base} bg-secondary text-secondary-foreground`;
+}
+
+function formatAttentionDue(value: string, sourceType: AttentionSourceType) {
+  if (sourceType === "follow_up" || sourceType === "missed_follow_up") {
+    return `Follow-up date ${new Date(value).toLocaleDateString()}`;
+  }
+  const date = new Date(value);
+  return date.toLocaleString(undefined, {
+    month: "short",
+    day: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+}
+
+function buildAttentionWhatsAppMessage(item: AttentionItem) {
+  const name = firstName(item.patientName);
+  if (item.sourceType === "appointment") {
+    return `Hi ${name}, this is a reminder for your appointment today at ${new Date(
+      item.dueAt,
+    ).toLocaleTimeString([], {
+      hour: "2-digit",
+      minute: "2-digit",
+    })}. Please reply Confirm if you can attend.`;
+  }
+  if (item.sourceType === "no_show" || item.sourceType === "needs_closure") {
+    return `Hi ${name}, we missed you for your appointment. Please reply to reschedule your consultation.`;
+  }
+  return `Hi ${name}, your follow-up consultation is due. Please reply Confirm to book/review, or Reschedule if another time is better.`;
+}
+
+function firstName(name: string) {
+  return name.trim().split(/\s+/)[0] || "there";
+}
+
+function buildWhatsAppHref(phone: string, message: string) {
+  const digits = phone.replace(/[^\d]/g, "");
+  const normalized = digits.length === 10 ? `91${digits}` : digits;
+  return `https://wa.me/${normalized}?text=${encodeURIComponent(message)}`;
 }
