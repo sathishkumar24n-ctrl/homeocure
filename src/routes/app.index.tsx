@@ -1,20 +1,31 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
-import type { ReactNode } from "react";
+import type { ComponentType, ReactNode } from "react";
 import { useEffect, useMemo } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   ArrowRight,
   AlertTriangle,
+  BarChart3,
   Building2,
   CalendarCheck,
+  CalendarPlus,
   CheckCircle2,
+  ChevronRight,
   Clock,
   FileText,
+  HelpCircle,
   HeartPulse,
+  Home,
+  Lightbulb,
+  Menu,
   MessageCircle,
   Package,
   Plus,
+  ReceiptText,
+  Search,
+  Settings,
   Stethoscope,
+  UserPlus,
   Users,
 } from "lucide-react";
 import { toast } from "sonner";
@@ -36,6 +47,22 @@ type DashboardAppointment = {
   status?: AppointmentStatus;
   reason: string | null;
   patient: { id: string; full_name: string; phone: string | null } | null;
+};
+
+type DashboardPatient = {
+  id: string;
+  full_name: string;
+  phone: string | null;
+  created_at: string;
+};
+
+type RemedyAlert = {
+  id: string;
+  name: string;
+  potency: string | null;
+  quantity: number;
+  unit: string;
+  low_stock_threshold: number;
 };
 
 type AppointmentStatus = "scheduled" | "completed" | "cancelled" | "no_show";
@@ -157,7 +184,7 @@ function DoctorDashboard() {
       const { start, end } = todayBounds();
       const { data, error } = await supabase
         .from("appointments")
-        .select("id, patient_id, scheduled_at, duration_minutes, reason")
+        .select("id, patient_id, scheduled_at, duration_minutes, status, reason")
         .eq("clinic_id", clinic!.id)
         .eq("status", "scheduled")
         .gte("scheduled_at", start.toISOString())
@@ -175,7 +202,7 @@ function DoctorDashboard() {
       const { end } = todayBounds();
       const { data, error } = await supabase
         .from("appointments")
-        .select("id, patient_id, scheduled_at, duration_minutes, reason")
+        .select("id, patient_id, scheduled_at, duration_minutes, status, reason")
         .eq("clinic_id", clinic!.id)
         .eq("status", "scheduled")
         .gte("scheduled_at", end.toISOString())
@@ -258,16 +285,35 @@ function DoctorDashboard() {
     onError: (e: Error) => toast.error(e.message),
   });
 
-  const lowStockCount = useQuery({
-    queryKey: ["low-stock-count", clinic?.id],
+  const lowStockRemedies = useQuery({
+    queryKey: ["low-stock-remedies", clinic?.id],
     enabled: !!clinic?.id,
     queryFn: async () => {
       const { data, error } = await supabase
         .from("remedies")
-        .select("quantity, low_stock_threshold")
-        .eq("clinic_id", clinic!.id);
+        .select("id, name, potency, quantity, unit, low_stock_threshold")
+        .eq("clinic_id", clinic!.id)
+        .order("quantity", { ascending: true })
+        .limit(8);
       if (error) throw error;
-      return (data ?? []).filter((r) => Number(r.quantity) <= Number(r.low_stock_threshold)).length;
+      return (data ?? []).filter(
+        (r) => Number(r.quantity) <= Number(r.low_stock_threshold),
+      ) as RemedyAlert[];
+    },
+  });
+
+  const recentPatients = useQuery({
+    queryKey: ["recent-dashboard-patients", clinic?.id],
+    enabled: !!clinic?.id,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("patients")
+        .select("id, full_name, phone, created_at")
+        .eq("clinic_id", clinic!.id)
+        .order("created_at", { ascending: false })
+        .limit(5);
+      if (error) throw error;
+      return (data ?? []) as DashboardPatient[];
     },
   });
 
@@ -303,57 +349,64 @@ function DoctorDashboard() {
 
   const attentionSummary = useMemo(() => summarizeAttention(attentionItems), [attentionItems]);
 
-  const tiles = [
-    {
-      icon: Users,
-      label: "Patients",
-      value: patientCount.data ?? "—",
-      to: "/app/patients" as const,
-      hint: "Manage your patient database",
-    },
+  const metricCards = [
     {
       icon: CalendarCheck,
-      label: "Today's appointments",
+      label: "Appointments Today",
       value: todayAppointmentsCount.data ?? "—",
-      to: "/app/appointments" as const,
-      hint: "Schedule and manage today",
+      meta: `${todayAppointmentsCount.data ?? "—"} remaining`,
+      tone: "teal",
+    },
+    {
+      icon: Users,
+      label: "Waiting Now",
+      value: attentionLoading ? "—" : attentionSummary.appointmentsToday,
+      meta: `${attentionSummary.urgent} urgent`,
+      tone: "blue",
     },
     {
       icon: HeartPulse,
-      label: "Follow-ups due",
+      label: "Follow-ups Due",
       value: attentionLoading
         ? "—"
         : attentionSummary.dueFollowUps + attentionSummary.overdueFollowUps,
-      to: "/app/follow-ups" as const,
-      hint: "Due today and overdue reviews",
+      meta: `${attentionSummary.overdueFollowUps} overdue`,
+      tone: "purple",
     },
     {
       icon: AlertTriangle,
-      label: "Needs attention",
+      label: "Needs Attention",
       value: attentionLoading ? "—" : attentionSummary.total,
-      to: "/app/" as const,
-      hint: "Appointments, follow-ups, no-shows",
+      meta: "Work queue",
+      tone: "red",
     },
     {
       icon: Package,
-      label: "Low-stock remedies",
-      value: lowStockCount.data ?? "—",
-      to: "/app/remedies" as const,
-      hint: "Track inventory and stock",
+      label: "Inventory Alerts",
+      value: lowStockRemedies.isLoading ? "—" : (lowStockRemedies.data ?? []).length,
+      meta: "Low stock",
+      tone: "amber",
+    },
+  ];
+
+  const quickActions = [
+    {
+      icon: UserPlus,
+      title: "New Patient",
+      detail: "Add a patient",
+      to: "/app/patients/new" as const,
     },
     {
-      icon: MessageCircle,
-      label: "WhatsApp status",
-      value: "Check",
-      to: "/app/whatsapp-status" as const,
-      hint: "Config, logs & scheduler",
+      icon: CalendarPlus,
+      title: "New Appointment",
+      detail: "Book a visit",
+      to: "/app/appointments" as const,
     },
     {
-      icon: Building2,
-      label: "Clinic profile",
-      value: "Edit",
-      to: "/app/clinic" as const,
-      hint: "Logo, signature & registration",
+      icon: Stethoscope,
+      title: "Start Consultation",
+      detail: "Open patient case",
+      to: "/app/patients" as const,
     },
   ];
 
@@ -397,7 +450,10 @@ function DoctorDashboard() {
   ];
 
   const completedSteps = onboardingSteps.filter((step) => step.done).length;
-  const showOnboarding = completedSteps < onboardingSteps.length;
+  const showOnboarding =
+    completedSteps < onboardingSteps.length &&
+    (patientCount.data ?? 0) === 0 &&
+    (todayAppointmentsCount.data ?? 0) === 0;
 
   if (!loading && role == null) {
     return <div className="p-8 text-center text-sm text-muted-foreground">Loading...</div>;
@@ -408,143 +464,88 @@ function DoctorDashboard() {
   }
 
   return (
-    <div className="mx-auto max-w-5xl px-4 py-8">
-      <div className="rounded-3xl bg-gradient-soft p-6 shadow-card sm:p-8">
-        <div className="flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
-          <div>
-            <p className="text-sm font-medium text-muted-foreground">Welcome back</p>
-            <h1 className="mt-1 text-2xl font-bold tracking-tight sm:text-3xl">
-              Dr. {user?.user_metadata?.full_name ?? "Doctor"}
-            </h1>
-            <p className="mt-2 max-w-md text-sm text-muted-foreground">
-              {clinic?.name ?? "Your clinic"} — your daily clinic command center.
-            </p>
-          </div>
-          <div className="grid grid-cols-3 gap-2 text-center sm:min-w-[360px]">
-            <CommandMetric label="Today" value={todayAppointmentsCount.data ?? "—"} />
-            <CommandMetric
-              label="Urgent"
-              value={attentionLoading ? "—" : attentionSummary.urgent}
-            />
-            <CommandMetric
-              label="Overdue"
-              value={
-                attentionLoading
-                  ? "—"
-                  : attentionSummary.overdueFollowUps + attentionSummary.needsClosure
-              }
-            />
-          </div>
-        </div>
-      </div>
+    <div className="bg-[#f8fbfa]">
+      <div className="mx-auto grid min-h-[calc(100vh-4rem)] max-w-[1500px] lg:grid-cols-[250px_1fr]">
+        <DashboardSidebar doctorName={user?.user_metadata?.full_name} clinicName={clinic?.name} />
 
-      {showOnboarding && (
-        <section className="mt-6 rounded-3xl border border-border/60 bg-card p-5 shadow-card sm:p-6">
-          <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-            <div>
-              <p className="text-xs font-semibold uppercase tracking-wide text-primary">
-                First clinic setup
-              </p>
-              <h2 className="mt-1 text-xl font-bold tracking-tight">
-                Get HomeoCare ready for daily practice
-              </h2>
-              <p className="mt-1 max-w-2xl text-sm text-muted-foreground">
-                Complete these steps once, then your dashboard becomes a daily command center.
-              </p>
-            </div>
-            <div className="rounded-full bg-secondary px-3 py-1 text-xs font-semibold text-secondary-foreground">
-              {completedSteps}/{onboardingSteps.length} done
-            </div>
-          </div>
+        <main className="min-w-0 border-l border-border/70 bg-background/80">
+          <DashboardTopbar doctorName={user?.user_metadata?.full_name} />
 
-          <div className="mt-5 grid gap-3 lg:grid-cols-6">
-            {onboardingSteps.map((step) => (
-              <Link
-                key={step.label}
-                to={step.to}
-                className={`group rounded-2xl border p-4 transition-smooth hover:-translate-y-0.5 hover:shadow-card ${
-                  step.done ? "border-primary/25 bg-primary/10" : "border-border/60 bg-background"
-                }`}
-              >
-                <div className="flex items-center justify-between gap-2">
-                  <div
-                    className={`flex h-9 w-9 items-center justify-center rounded-xl ${
-                      step.done
-                        ? "bg-primary text-primary-foreground"
-                        : "bg-secondary text-secondary-foreground"
-                    }`}
-                  >
-                    {step.done ? (
-                      <CheckCircle2 className="h-5 w-5" />
-                    ) : (
-                      <Plus className="h-5 w-5" />
-                    )}
-                  </div>
-                  <ArrowRight className="h-4 w-4 text-muted-foreground transition-transform group-hover:translate-x-0.5" />
-                </div>
-                <p className="mt-3 text-sm font-semibold text-foreground">{step.label}</p>
-                <p className="mt-1 text-xs text-muted-foreground">{step.detail}</p>
-              </Link>
-            ))}
-          </div>
-        </section>
-      )}
-
-      <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-        {tiles.map((t) => {
-          const inner = (
-            <>
-              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-secondary text-secondary-foreground">
-                <t.icon className="h-5 w-5" />
+          <div className="space-y-5 px-4 py-5 sm:px-6 lg:px-7">
+            <section className="grid gap-4 xl:grid-cols-[1fr_2fr] xl:items-center">
+              <div>
+                <h1 className="text-2xl font-bold tracking-tight sm:text-3xl">
+                  {greeting()}, Dr. {user?.user_metadata?.full_name ?? "Doctor"}
+                </h1>
+                <p className="mt-2 text-sm text-muted-foreground">
+                  Here&apos;s your clinic overview for today.
+                </p>
               </div>
-              <p className="mt-3 text-xs font-medium uppercase tracking-wide text-muted-foreground">
-                {t.label}
-              </p>
-              <p className="mt-1 text-2xl font-bold text-foreground">{t.value}</p>
-              <p className="text-xs text-muted-foreground">{t.hint}</p>
-            </>
-          );
-          return (
-            <Link
-              key={t.label}
-              to={t.to}
-              className="group rounded-2xl border border-border/60 bg-card p-5 shadow-card transition-smooth hover:-translate-y-0.5 hover:shadow-elevated"
-            >
-              {inner}
-              <p className="mt-2 inline-flex items-center gap-1 text-xs font-semibold text-primary">
-                Open{" "}
-                <ArrowRight className="h-3 w-3 transition-transform group-hover:translate-x-0.5" />
-              </p>
-            </Link>
-          );
-        })}
+              <div className="grid gap-3 sm:grid-cols-3">
+                {quickActions.map((action) => (
+                  <QuickActionCard key={action.title} {...action} />
+                ))}
+              </div>
+            </section>
+
+            <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-5">
+              {metricCards.map((metric) => (
+                <MetricCard key={metric.label} {...metric} />
+              ))}
+            </section>
+
+            {showOnboarding && (
+              <OnboardingPanel
+                completedSteps={completedSteps}
+                totalSteps={onboardingSteps.length}
+                steps={onboardingSteps}
+              />
+            )}
+
+            <section className="grid gap-5 xl:grid-cols-[1.05fr_1.2fr]">
+              <AppointmentPanel
+                title="Today's Schedule"
+                loading={todayAppointments.isLoading}
+                appointments={todayAppointments.data ?? []}
+                empty="No appointments today."
+                showVisitAction
+                compact
+              />
+              <AttentionQueue
+                loading={attentionLoading}
+                items={attentionItems}
+                summary={attentionSummary}
+                updatingAppointmentId={setAppointmentStatus.variables?.id}
+                onSetAppointmentStatus={(id, status) => setAppointmentStatus.mutate({ id, status })}
+              />
+            </section>
+
+            <section className="grid gap-5 xl:grid-cols-3">
+              <InventoryAlerts
+                remedies={lowStockRemedies.data ?? []}
+                loading={lowStockRemedies.isLoading}
+              />
+              <RecentPatients
+                patients={recentPatients.data ?? []}
+                loading={recentPatients.isLoading}
+              />
+              <QuickNotes />
+            </section>
+
+            <section className="grid gap-5 xl:grid-cols-[1fr_1fr]">
+              <AppointmentPanel
+                title="Upcoming Appointments"
+                loading={upcomingAppointments.isLoading}
+                appointments={upcomingAppointments.data ?? []}
+                empty="No upcoming scheduled appointments."
+              />
+              <FollowUpRemindersCard clinicId={clinic?.id} />
+            </section>
+
+            <ProTip />
+          </div>
+        </main>
       </div>
-
-      <AttentionQueue
-        loading={attentionLoading}
-        items={attentionItems}
-        summary={attentionSummary}
-        updatingAppointmentId={setAppointmentStatus.variables?.id}
-        onSetAppointmentStatus={(id, status) => setAppointmentStatus.mutate({ id, status })}
-      />
-
-      <section className="mt-6 grid gap-4 lg:grid-cols-2">
-        <AppointmentPanel
-          title="Today's appointment queue"
-          loading={todayAppointments.isLoading}
-          appointments={todayAppointments.data ?? []}
-          empty="No scheduled appointments today."
-          showVisitAction
-        />
-        <AppointmentPanel
-          title="Upcoming appointments"
-          loading={upcomingAppointments.isLoading}
-          appointments={upcomingAppointments.data ?? []}
-          empty="No upcoming scheduled appointments."
-        />
-      </section>
-
-      <FollowUpRemindersCard clinicId={clinic?.id} />
     </div>
   );
 }
@@ -555,12 +556,14 @@ function AppointmentPanel({
   appointments,
   empty,
   showVisitAction,
+  compact,
 }: {
   title: string;
   loading: boolean;
   appointments: DashboardAppointment[];
   empty: string;
   showVisitAction?: boolean;
+  compact?: boolean;
 }) {
   return (
     <div className="rounded-2xl border border-border/60 bg-card p-5 shadow-card">
@@ -589,10 +592,199 @@ function AppointmentPanel({
               key={appointment.id}
               appointment={appointment}
               showVisitAction={showVisitAction}
+              compact={compact}
             />
           ))}
         </div>
       )}
+    </div>
+  );
+}
+
+function DashboardSidebar({
+  doctorName,
+  clinicName,
+}: {
+  doctorName?: string | null;
+  clinicName?: string | null;
+}) {
+  const nav = [
+    { icon: Home, label: "Dashboard", href: "/app", active: true },
+    { icon: CalendarCheck, label: "Appointments", href: "/app/appointments" },
+    { icon: Users, label: "Patients", href: "/app/patients" },
+    { icon: Stethoscope, label: "Consultations", href: "/app/patients" },
+    { icon: ReceiptText, label: "Prescriptions", href: "/app/patients" },
+    { icon: Package, label: "Inventory", href: "/app/remedies" },
+    { icon: BarChart3, label: "Follow-ups", href: "/app/follow-ups" },
+  ];
+
+  return (
+    <aside className="hidden bg-card px-5 py-7 lg:block">
+      <div className="flex items-center gap-3 text-primary">
+        <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-primary/10">
+          <HeartPulse className="h-6 w-6" />
+        </div>
+        <div>
+          <p className="text-lg font-bold leading-tight text-foreground">HomeoCare</p>
+          <p className="text-xs font-medium text-muted-foreground">Doctor</p>
+        </div>
+      </div>
+
+      <nav className="mt-8 space-y-1.5">
+        {nav.map((item) => (
+          <a
+            key={item.label}
+            href={item.href}
+            className={`flex items-center gap-3 rounded-2xl px-3.5 py-3 text-sm font-semibold transition-smooth ${
+              item.active
+                ? "bg-gradient-soft text-primary shadow-soft"
+                : "text-muted-foreground hover:bg-muted hover:text-foreground"
+            }`}
+          >
+            <item.icon className="h-[18px] w-[18px]" />
+            {item.label}
+          </a>
+        ))}
+      </nav>
+
+      <div className="mt-12 border-t border-border/70 pt-5">
+        <a
+          href="/app/clinic"
+          className="flex items-center gap-3 rounded-2xl px-3.5 py-3 text-sm font-semibold text-muted-foreground transition-smooth hover:bg-muted hover:text-foreground"
+        >
+          <Settings className="h-[18px] w-[18px]" />
+          Settings
+        </a>
+        <a
+          href="/app/whatsapp-status"
+          className="flex items-center gap-3 rounded-2xl px-3.5 py-3 text-sm font-semibold text-muted-foreground transition-smooth hover:bg-muted hover:text-foreground"
+        >
+          <HelpCircle className="h-[18px] w-[18px]" />
+          Help & Support
+        </a>
+      </div>
+
+      <div className="mt-10 rounded-2xl border border-border/70 bg-background p-4 shadow-soft">
+        <div className="flex items-center gap-3">
+          <div className="flex h-10 w-10 items-center justify-center rounded-full bg-gradient-primary text-sm font-bold text-primary-foreground">
+            {initials(doctorName ?? "Doctor")}
+          </div>
+          <div className="min-w-0">
+            <p className="truncate text-sm font-bold text-foreground">
+              Dr. {doctorName ?? "Doctor"}
+            </p>
+            <p className="truncate text-xs text-muted-foreground">
+              {clinicName ?? "HomeoCare Clinic"}
+            </p>
+          </div>
+        </div>
+      </div>
+    </aside>
+  );
+}
+
+function DashboardTopbar({ doctorName }: { doctorName?: string | null }) {
+  const today = new Date();
+
+  return (
+    <div className="sticky top-16 z-30 border-b border-border/70 bg-background/90 px-4 py-3 backdrop-blur-md sm:px-6 lg:px-7">
+      <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+        <div className="flex items-center gap-3">
+          <button
+            type="button"
+            className="flex h-10 w-10 items-center justify-center rounded-2xl border border-border bg-card text-muted-foreground lg:hidden"
+            aria-label="Open dashboard menu"
+          >
+            <Menu className="h-5 w-5" />
+          </button>
+          <div className="relative w-full min-w-0 lg:w-[430px]">
+            <Search className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+            <input
+              placeholder="Search patients, appointments..."
+              className="h-11 w-full rounded-2xl border border-border bg-card pl-11 pr-16 text-sm text-foreground shadow-soft outline-none transition-smooth focus:border-primary/40 focus:ring-4 focus:ring-primary/10"
+            />
+            <span className="pointer-events-none absolute right-3 top-1/2 hidden -translate-y-1/2 rounded-lg border border-border bg-background px-2 py-1 text-[11px] font-semibold text-muted-foreground sm:inline">
+              Ctrl K
+            </span>
+          </div>
+        </div>
+        <div className="flex items-center justify-between gap-3 text-sm text-foreground lg:justify-end">
+          <div className="inline-flex items-center gap-2 rounded-2xl bg-card px-3 py-2 font-semibold shadow-soft">
+            <CalendarCheck className="h-4 w-4 text-primary" />
+            {today.toLocaleDateString(undefined, {
+              day: "2-digit",
+              month: "short",
+              year: "numeric",
+              weekday: "short",
+            })}
+          </div>
+          <div className="hidden h-9 w-9 items-center justify-center rounded-2xl bg-card text-primary shadow-soft sm:flex">
+            <MessageCircle className="h-4 w-4" />
+          </div>
+          <div className="flex items-center gap-2 rounded-2xl bg-card px-3 py-2 shadow-soft">
+            <div className="flex h-8 w-8 items-center justify-center rounded-full bg-gradient-primary text-xs font-bold text-primary-foreground">
+              {initials(doctorName ?? "Doctor")}
+            </div>
+            <span className="hidden font-semibold sm:inline">Dr. {doctorName ?? "Doctor"}</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function QuickActionCard({
+  icon: Icon,
+  title,
+  detail,
+  to,
+}: {
+  icon: ComponentType<{ className?: string }>;
+  title: string;
+  detail: string;
+  to: string;
+}) {
+  return (
+    <a
+      href={to}
+      className="group flex items-center gap-4 rounded-2xl border border-border/70 bg-card p-4 shadow-soft transition-smooth hover:-translate-y-0.5 hover:shadow-card"
+    >
+      <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-primary/10 text-primary">
+        <Icon className="h-6 w-6" />
+      </div>
+      <div className="min-w-0 flex-1">
+        <p className="font-bold text-foreground">{title}</p>
+        <p className="text-xs text-muted-foreground">{detail}</p>
+      </div>
+      <ChevronRight className="h-4 w-4 text-muted-foreground transition-transform group-hover:translate-x-0.5" />
+    </a>
+  );
+}
+
+function MetricCard({
+  icon: Icon,
+  label,
+  value,
+  meta,
+  tone,
+}: {
+  icon: ComponentType<{ className?: string }>;
+  label: string;
+  value: ReactNode;
+  meta: string;
+  tone: string;
+}) {
+  return (
+    <div className={`rounded-2xl border p-4 shadow-soft ${metricTone(tone)}`}>
+      <div className="flex items-start justify-between gap-3">
+        <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-white/70">
+          <Icon className="h-5 w-5" />
+        </div>
+        <div className="h-8 w-16 rounded-full bg-current/10" />
+      </div>
+      <p className="mt-3 text-sm font-semibold text-foreground">{label}</p>
+      <p className="mt-1 text-2xl font-bold text-foreground">{value}</p>
+      <p className="mt-2 text-xs font-medium text-muted-foreground">{meta}</p>
     </div>
   );
 }
@@ -604,6 +796,194 @@ function CommandMetric({ label, value }: { label: string; value: ReactNode }) {
       <p className="mt-1 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
         {label}
       </p>
+    </div>
+  );
+}
+
+function OnboardingPanel({
+  completedSteps,
+  totalSteps,
+  steps,
+}: {
+  completedSteps: number;
+  totalSteps: number;
+  steps: Array<{ label: string; detail: string; done: boolean; to: string }>;
+}) {
+  return (
+    <section className="rounded-2xl border border-primary/15 bg-primary/5 p-4 shadow-soft">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <div>
+          <p className="text-sm font-bold text-foreground">Finish first clinic setup</p>
+          <p className="text-xs text-muted-foreground">
+            Shown only while your clinic is still empty. Full setup remains available in settings.
+          </p>
+        </div>
+        <span className="rounded-full bg-card px-3 py-1 text-xs font-bold text-primary shadow-soft">
+          {completedSteps}/{totalSteps} done
+        </span>
+      </div>
+      <div className="mt-3 grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+        {steps
+          .filter((step) => !step.done)
+          .slice(0, 3)
+          .map((step) => (
+            <a
+              key={step.label}
+              href={step.to}
+              className="rounded-2xl border border-border/60 bg-card p-3 text-sm shadow-soft transition-smooth hover:-translate-y-0.5 hover:shadow-card"
+            >
+              <p className="font-semibold text-foreground">{step.label}</p>
+              <p className="mt-1 line-clamp-2 text-xs text-muted-foreground">{step.detail}</p>
+            </a>
+          ))}
+      </div>
+    </section>
+  );
+}
+
+function InventoryAlerts({ remedies, loading }: { remedies: RemedyAlert[]; loading: boolean }) {
+  return (
+    <DashboardPanel title="Inventory Alerts" href="/app/remedies">
+      {loading ? (
+        <PanelEmpty>Loading inventory...</PanelEmpty>
+      ) : remedies.length === 0 ? (
+        <PanelEmpty>No low-stock remedies.</PanelEmpty>
+      ) : (
+        <div className="space-y-3">
+          {remedies.slice(0, 4).map((remedy) => {
+            const empty = Number(remedy.quantity) <= 0;
+            return (
+              <div key={remedy.id} className="flex items-center justify-between gap-3">
+                <div className="flex min-w-0 items-center gap-3">
+                  <div
+                    className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-xl ${
+                      empty ? "bg-destructive/10 text-destructive" : "bg-amber-100 text-amber-700"
+                    }`}
+                  >
+                    <Package className="h-4 w-4" />
+                  </div>
+                  <div className="min-w-0">
+                    <p className="truncate text-sm font-bold text-foreground">
+                      {remedy.name}
+                      {remedy.potency ? ` ${remedy.potency}` : ""}
+                    </p>
+                    <p className="text-xs text-muted-foreground">
+                      {empty ? "Out of stock" : `Low stock (${remedy.quantity} ${remedy.unit})`}
+                    </p>
+                  </div>
+                </div>
+                <span
+                  className={`rounded-full px-2.5 py-1 text-[11px] font-bold ${
+                    empty ? "bg-destructive/10 text-destructive" : "bg-amber-100 text-amber-700"
+                  }`}
+                >
+                  {empty ? "Out" : "Reorder"}
+                </span>
+              </div>
+            );
+          })}
+        </div>
+      )}
+    </DashboardPanel>
+  );
+}
+
+function RecentPatients({ patients, loading }: { patients: DashboardPatient[]; loading: boolean }) {
+  return (
+    <DashboardPanel title="Recent Patients" href="/app/patients">
+      {loading ? (
+        <PanelEmpty>Loading patients...</PanelEmpty>
+      ) : patients.length === 0 ? (
+        <PanelEmpty>No patients added yet.</PanelEmpty>
+      ) : (
+        <div className="space-y-3">
+          {patients.map((patient) => (
+            <a
+              key={patient.id}
+              href={`/app/patients/${patient.id}`}
+              className="flex items-center justify-between gap-3 rounded-xl px-1 py-1 transition-smooth hover:bg-muted"
+            >
+              <div className="flex min-w-0 items-center gap-3">
+                <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-secondary text-xs font-bold text-secondary-foreground">
+                  {initials(patient.full_name)}
+                </div>
+                <div className="min-w-0">
+                  <p className="truncate text-sm font-bold text-foreground">{patient.full_name}</p>
+                  <p className="text-xs text-muted-foreground">
+                    {patient.phone ?? "No mobile number"}
+                  </p>
+                </div>
+              </div>
+              <ChevronRight className="h-4 w-4 text-muted-foreground" />
+            </a>
+          ))}
+        </div>
+      )}
+    </DashboardPanel>
+  );
+}
+
+function QuickNotes() {
+  return (
+    <DashboardPanel title="Quick Notes">
+      <div className="rounded-2xl border border-border bg-background px-3 py-3 text-sm text-muted-foreground">
+        Add a quick note or reminder...
+      </div>
+      <div className="mt-6 rounded-2xl border border-dashed border-border bg-background/60 p-6 text-center">
+        <FileText className="mx-auto h-6 w-6 text-muted-foreground" />
+        <p className="mt-2 text-sm text-muted-foreground">No notes yet</p>
+      </div>
+    </DashboardPanel>
+  );
+}
+
+function DashboardPanel({
+  title,
+  href,
+  children,
+}: {
+  title: string;
+  href?: string;
+  children: ReactNode;
+}) {
+  return (
+    <section className="rounded-2xl border border-border/60 bg-card p-5 shadow-card">
+      <div className="mb-4 flex items-center justify-between gap-3">
+        <h2 className="text-base font-bold tracking-tight">{title}</h2>
+        {href && (
+          <a href={href} className="text-xs font-bold text-primary">
+            View all
+          </a>
+        )}
+      </div>
+      {children}
+    </section>
+  );
+}
+
+function PanelEmpty({ children }: { children: ReactNode }) {
+  return (
+    <div className="rounded-2xl border border-dashed border-border bg-background/60 p-6 text-center text-sm text-muted-foreground">
+      {children}
+    </div>
+  );
+}
+
+function ProTip() {
+  return (
+    <div className="flex flex-col gap-3 rounded-2xl border border-primary/15 bg-primary/5 p-4 shadow-soft sm:flex-row sm:items-center sm:justify-between">
+      <div className="flex items-center gap-3">
+        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-card text-primary shadow-soft">
+          <Lightbulb className="h-5 w-5" />
+        </div>
+        <p className="text-sm text-muted-foreground">
+          <span className="font-bold text-foreground">Pro Tip</span> Use Start Consultation to add
+          diagnosis, prescription, and follow-up for a patient.
+        </p>
+      </div>
+      <button type="button" className="self-start text-xs font-bold text-primary sm:self-auto">
+        Dismiss
+      </button>
     </div>
   );
 }
@@ -813,12 +1193,60 @@ function AttentionQueueCard({
 function DashboardAppointmentCard({
   appointment,
   showVisitAction,
+  compact,
 }: {
   appointment: DashboardAppointment;
   showVisitAction?: boolean;
+  compact?: boolean;
 }) {
   const dt = new Date(appointment.scheduled_at);
   const patient = appointment.patient;
+  const status = appointment.status ?? "scheduled";
+
+  if (compact) {
+    return (
+      <div className="grid grid-cols-[72px_1fr_auto] items-center gap-3 border-b border-border/70 py-3 last:border-b-0">
+        <div className="flex items-center gap-2 text-sm font-bold text-foreground">
+          <span
+            className={`h-2 w-2 rounded-full ${
+              status === "completed"
+                ? "bg-primary"
+                : status === "no_show"
+                  ? "bg-destructive"
+                  : isAppointmentPast(appointment)
+                    ? "bg-amber-500"
+                    : "bg-blue-500"
+            }`}
+          />
+          {dt.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+        </div>
+        <div className="min-w-0">
+          <p className="truncate text-sm font-bold text-foreground">
+            {patient?.full_name ?? "Unknown patient"}
+          </p>
+          <p className="truncate text-xs text-muted-foreground">
+            {appointment.reason ?? "Consultation"} · {appointment.duration_minutes} min
+          </p>
+        </div>
+        <div className="flex items-center gap-2">
+          <span className={scheduleStatusClass(status)}>{scheduleStatusLabel(appointment)}</span>
+          {patient && showVisitAction && (
+            <a
+              href={`/app/patients/${patient.id}?newVisit=1&appointmentId=${appointment.id}`}
+              className="hidden rounded-full bg-primary/10 px-3 py-1.5 text-xs font-bold text-primary transition-smooth hover:bg-primary/15 sm:inline-flex"
+            >
+              Start
+            </a>
+          )}
+          {patient && (
+            <a href={`/app/patients/${patient.id}`} aria-label={`Open ${patient.full_name}`}>
+              <ChevronRight className="h-4 w-4 text-muted-foreground" />
+            </a>
+          )}
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="rounded-2xl border border-border/60 bg-background p-4">
@@ -1003,6 +1431,52 @@ function summarizeAttention(items: AttentionItem[]): AttentionSummary {
     missedAppointments: items.filter((item) => item.sourceType === "no_show").length,
     needsClosure: items.filter((item) => item.sourceType === "needs_closure").length,
   };
+}
+
+function greeting() {
+  const hour = new Date().getHours();
+  if (hour < 12) return "Good morning";
+  if (hour < 17) return "Good afternoon";
+  return "Good evening";
+}
+
+function initials(name: string) {
+  return name
+    .split(/\s+/)
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((part) => part[0]?.toUpperCase())
+    .join("");
+}
+
+function metricTone(tone: string) {
+  if (tone === "blue") return "border-blue-100 bg-blue-50/80 text-blue-600";
+  if (tone === "purple") return "border-violet-100 bg-violet-50/80 text-violet-600";
+  if (tone === "red") return "border-red-100 bg-red-50/80 text-red-600";
+  if (tone === "amber") return "border-amber-100 bg-amber-50/80 text-amber-600";
+  return "border-teal-100 bg-teal-50/80 text-teal-600";
+}
+
+function isAppointmentPast(appointment: DashboardAppointment) {
+  return (
+    new Date(appointment.scheduled_at).getTime() + appointment.duration_minutes * 60000 < Date.now()
+  );
+}
+
+function scheduleStatusLabel(appointment: DashboardAppointment) {
+  const status = appointment.status ?? "scheduled";
+  if (status === "completed") return "Completed";
+  if (status === "cancelled") return "Cancelled";
+  if (status === "no_show") return "No-show";
+  return isAppointmentPast(appointment) ? "Due now" : "Upcoming";
+}
+
+function scheduleStatusClass(status: AppointmentStatus) {
+  const base = "hidden rounded-full px-3 py-1.5 text-xs font-bold sm:inline-flex";
+  if (status === "completed") return `${base} bg-primary/10 text-primary`;
+  if (status === "cancelled") return `${base} bg-muted text-muted-foreground`;
+  if (status === "no_show") return `${base} bg-destructive/10 text-destructive`;
+  return `${base} bg-blue-50 text-blue-700`;
 }
 
 function attentionReason(appointmentReason?: string | null, followUpComplaint?: string | null) {
