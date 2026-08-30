@@ -491,7 +491,7 @@ function DoctorDashboard() {
         <main className="min-w-0 border-l border-border/70 bg-background/80">
           <DashboardTopbar doctorName={user?.user_metadata?.full_name} />
 
-          <div className="space-y-5 px-4 py-5 sm:px-6 lg:px-7">
+          <div className="space-y-4 px-4 py-4 sm:px-6 lg:px-6">
             <section>
               <div className="max-w-3xl">
                 <h1 className="text-2xl font-bold tracking-tight sm:text-3xl">
@@ -509,7 +509,7 @@ function DoctorDashboard() {
               ))}
             </section>
 
-            <section className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-[repeat(5,minmax(0,1fr))]">
+            <section className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 min-[1440px]:grid-cols-[repeat(5,minmax(0,1fr))]">
               {metricCards.map((metric) => (
                 <MetricCard key={metric.label} {...metric} />
               ))}
@@ -768,14 +768,14 @@ function QuickActionCard({
   return (
     <a
       href={to}
-      className="group flex min-h-[92px] items-center gap-4 rounded-2xl border border-border/70 bg-card p-4 shadow-soft transition-smooth hover:-translate-y-0.5 hover:shadow-card"
+      className="group flex min-h-[68px] items-center gap-3 rounded-2xl border border-border/70 bg-card px-3.5 py-3 shadow-soft transition-smooth hover:-translate-y-0.5 hover:shadow-card"
     >
-      <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-primary/10 text-primary">
-        <Icon className="h-6 w-6" />
+      <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary">
+        <Icon className="h-5 w-5" />
       </div>
       <div className="min-w-0 flex-1">
-        <p className="font-bold text-foreground">{title}</p>
-        <p className="text-xs text-muted-foreground">{detail}</p>
+        <p className="text-sm font-bold leading-tight text-foreground">{title}</p>
+        <p className="mt-0.5 text-xs leading-tight text-muted-foreground">{detail}</p>
       </div>
       <ChevronRight className="h-4 w-4 text-muted-foreground transition-transform group-hover:translate-x-0.5" />
     </a>
@@ -797,18 +797,18 @@ function MetricCard({
 }) {
   return (
     <div
-      className={`flex min-h-[148px] flex-col rounded-2xl border p-4 shadow-soft ${metricTone(tone)}`}
+      className={`flex min-h-[110px] flex-col rounded-2xl border px-3.5 py-3 shadow-soft ${metricTone(tone)}`}
     >
-      <div className="flex items-center gap-3">
-        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-white/75 shadow-sm">
-          <Icon className="h-5 w-5" />
+      <div className="flex items-center gap-2.5">
+        <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-white/75 shadow-sm">
+          <Icon className="h-4 w-4" />
         </div>
-        <p className="min-w-0 text-sm font-semibold leading-tight text-foreground">{label}</p>
+        <p className="min-w-0 text-xs font-semibold leading-tight text-foreground">{label}</p>
       </div>
-      <p className="mt-5 text-3xl font-bold leading-none tracking-normal text-foreground">
+      <p className="mt-3 text-2xl font-bold leading-none tracking-normal text-foreground">
         {value}
       </p>
-      <p className="mt-auto pt-3 text-xs font-medium leading-snug text-muted-foreground">{meta}</p>
+      <p className="mt-auto pt-2 text-xs font-medium leading-snug text-muted-foreground">{meta}</p>
     </div>
   );
 }
@@ -1026,7 +1026,7 @@ function AttentionQueue({
   onSetAppointmentStatus: (id: string, status: AppointmentStatus) => void;
 }) {
   return (
-    <section className="mt-6 rounded-3xl border border-border/60 bg-card p-5 shadow-card sm:p-6">
+    <section className="rounded-3xl border border-border/60 bg-card p-5 shadow-card sm:p-5">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div>
           <p className="text-xs font-semibold uppercase tracking-wide text-primary">
