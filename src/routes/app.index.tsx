@@ -1,4 +1,5 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
+import type { ReactNode } from "react";
 import { useEffect, useMemo } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
@@ -67,6 +68,16 @@ type AttentionItem = {
   canRecordVisit?: boolean;
   canComplete?: boolean;
   canMarkNoShow?: boolean;
+};
+
+type AttentionSummary = {
+  total: number;
+  urgent: number;
+  appointmentsToday: number;
+  overdueFollowUps: number;
+  dueFollowUps: number;
+  missedAppointments: number;
+  needsClosure: number;
 };
 
 function todayBounds() {
@@ -273,21 +284,6 @@ function DoctorDashboard() {
     },
   });
 
-  const followUpCount = useQuery({
-    queryKey: ["followup-count", clinic?.id],
-    enabled: !!clinic?.id,
-    queryFn: async () => {
-      const today = new Date().toISOString().slice(0, 10);
-      const { count, error } = await supabase
-        .from("patient_visits")
-        .select("id", { count: "exact", head: true })
-        .eq("clinic_id", clinic!.id)
-        .gte("next_follow_up", today);
-      if (error) throw error;
-      return count ?? 0;
-    },
-  });
-
   const attentionItems = useMemo(
     () =>
       buildAttentionItems({
@@ -304,6 +300,8 @@ function DoctorDashboard() {
 
   const attentionLoading =
     attentionAppointments.isLoading || attentionFollowUps.isLoading || attentionReminders.isLoading;
+
+  const attentionSummary = useMemo(() => summarizeAttention(attentionItems), [attentionItems]);
 
   const tiles = [
     {
@@ -322,10 +320,19 @@ function DoctorDashboard() {
     },
     {
       icon: HeartPulse,
-      label: "Upcoming follow-ups",
-      value: followUpCount.data ?? "—",
+      label: "Follow-ups due",
+      value: attentionLoading
+        ? "—"
+        : attentionSummary.dueFollowUps + attentionSummary.overdueFollowUps,
       to: "/app/follow-ups" as const,
-      hint: "Smart reminders & retention",
+      hint: "Due today and overdue reviews",
+    },
+    {
+      icon: AlertTriangle,
+      label: "Needs attention",
+      value: attentionLoading ? "—" : attentionSummary.total,
+      to: "/app/" as const,
+      hint: "Appointments, follow-ups, no-shows",
     },
     {
       icon: Package,
@@ -403,13 +410,32 @@ function DoctorDashboard() {
   return (
     <div className="mx-auto max-w-5xl px-4 py-8">
       <div className="rounded-3xl bg-gradient-soft p-6 shadow-card sm:p-8">
-        <p className="text-sm font-medium text-muted-foreground">Welcome back</p>
-        <h1 className="mt-1 text-2xl font-bold tracking-tight sm:text-3xl">
-          Dr. {user?.user_metadata?.full_name ?? "Doctor"}
-        </h1>
-        <p className="mt-2 max-w-md text-sm text-muted-foreground">
-          {clinic?.name ?? "Your clinic"} — here's an overview of today.
-        </p>
+        <div className="flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
+          <div>
+            <p className="text-sm font-medium text-muted-foreground">Welcome back</p>
+            <h1 className="mt-1 text-2xl font-bold tracking-tight sm:text-3xl">
+              Dr. {user?.user_metadata?.full_name ?? "Doctor"}
+            </h1>
+            <p className="mt-2 max-w-md text-sm text-muted-foreground">
+              {clinic?.name ?? "Your clinic"} — your daily clinic command center.
+            </p>
+          </div>
+          <div className="grid grid-cols-3 gap-2 text-center sm:min-w-[360px]">
+            <CommandMetric label="Today" value={todayAppointmentsCount.data ?? "—"} />
+            <CommandMetric
+              label="Urgent"
+              value={attentionLoading ? "—" : attentionSummary.urgent}
+            />
+            <CommandMetric
+              label="Overdue"
+              value={
+                attentionLoading
+                  ? "—"
+                  : attentionSummary.overdueFollowUps + attentionSummary.needsClosure
+              }
+            />
+          </div>
+        </div>
       </div>
 
       {showOnboarding && (
@@ -497,6 +523,7 @@ function DoctorDashboard() {
       <AttentionQueue
         loading={attentionLoading}
         items={attentionItems}
+        summary={attentionSummary}
         updatingAppointmentId={setAppointmentStatus.variables?.id}
         onSetAppointmentStatus={(id, status) => setAppointmentStatus.mutate({ id, status })}
       />
@@ -570,19 +597,30 @@ function AppointmentPanel({
   );
 }
 
+function CommandMetric({ label, value }: { label: string; value: ReactNode }) {
+  return (
+    <div className="rounded-2xl border border-white/60 bg-card/85 px-3 py-3 shadow-soft">
+      <p className="text-xl font-bold leading-none text-foreground">{value}</p>
+      <p className="mt-1 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+        {label}
+      </p>
+    </div>
+  );
+}
+
 function AttentionQueue({
   loading,
   items,
+  summary,
   updatingAppointmentId,
   onSetAppointmentStatus,
 }: {
   loading: boolean;
   items: AttentionItem[];
+  summary: AttentionSummary;
   updatingAppointmentId?: string;
   onSetAppointmentStatus: (id: string, status: AppointmentStatus) => void;
 }) {
-  const urgentCount = items.filter((item) => item.priority <= 2).length;
-
   return (
     <section className="mt-6 rounded-3xl border border-border/60 bg-card p-5 shadow-card sm:p-6">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
@@ -598,8 +636,16 @@ function AttentionQueue({
           </p>
         </div>
         <div className="rounded-full bg-secondary px-3 py-1 text-xs font-semibold text-secondary-foreground">
-          {items.length} active{urgentCount > 0 ? ` · ${urgentCount} urgent` : ""}
+          {summary.total} active{summary.urgent > 0 ? ` · ${summary.urgent} urgent` : ""}
         </div>
+      </div>
+
+      <div className="mt-4 grid gap-2 sm:grid-cols-2 lg:grid-cols-5">
+        <AttentionSummaryPill label="Today visits" value={summary.appointmentsToday} />
+        <AttentionSummaryPill label="Due follow-ups" value={summary.dueFollowUps} />
+        <AttentionSummaryPill label="Overdue follow-ups" value={summary.overdueFollowUps} urgent />
+        <AttentionSummaryPill label="No-shows" value={summary.missedAppointments} urgent />
+        <AttentionSummaryPill label="Needs closure" value={summary.needsClosure} urgent />
       </div>
 
       {loading ? (
@@ -627,6 +673,29 @@ function AttentionQueue({
         </div>
       )}
     </section>
+  );
+}
+
+function AttentionSummaryPill({
+  label,
+  value,
+  urgent,
+}: {
+  label: string;
+  value: number;
+  urgent?: boolean;
+}) {
+  return (
+    <div
+      className={`rounded-2xl border px-3 py-2 ${
+        urgent && value > 0
+          ? "border-destructive/20 bg-destructive/10 text-destructive"
+          : "border-border/60 bg-background text-foreground"
+      }`}
+    >
+      <p className="text-lg font-bold leading-none">{value}</p>
+      <p className="mt-1 text-[11px] font-semibold uppercase tracking-wide opacity-75">{label}</p>
+    </div>
   );
 }
 
@@ -713,7 +782,12 @@ function AttentionQueueCard({
           {item.appointmentId && item.canComplete && (
             <button
               type="button"
-              onClick={() => onSetAppointmentStatus(item.appointmentId!, "completed")}
+              onClick={() => {
+                const confirmed =
+                  item.sourceType !== "appointment" ||
+                  confirm("Mark this appointment completed without recording a visit?");
+                if (confirmed) onSetAppointmentStatus(item.appointmentId!, "completed");
+              }}
               disabled={updatingAppointmentId === item.appointmentId}
               className="inline-flex h-9 items-center gap-1.5 rounded-full border border-primary/30 bg-primary/10 px-3 text-xs font-semibold text-primary transition-smooth hover:bg-primary/15 disabled:opacity-60"
             >
@@ -879,7 +953,7 @@ function buildAttentionItems({
         appointmentId: appointment.id,
         durationMinutes: appointment.duration_minutes,
         canRecordVisit: Boolean(patient),
-        canComplete: false,
+        canComplete: true,
         canMarkNoShow: isPastTime,
       });
     }
@@ -919,6 +993,18 @@ function buildAttentionItems({
   });
 }
 
+function summarizeAttention(items: AttentionItem[]): AttentionSummary {
+  return {
+    total: items.length,
+    urgent: items.filter((item) => item.priority <= 2).length,
+    appointmentsToday: items.filter((item) => item.sourceType === "appointment").length,
+    overdueFollowUps: items.filter((item) => item.sourceType === "missed_follow_up").length,
+    dueFollowUps: items.filter((item) => item.sourceType === "follow_up").length,
+    missedAppointments: items.filter((item) => item.sourceType === "no_show").length,
+    needsClosure: items.filter((item) => item.sourceType === "needs_closure").length,
+  };
+}
+
 function attentionReason(appointmentReason?: string | null, followUpComplaint?: string | null) {
   const parts = [
     appointmentReason?.trim(),
@@ -930,6 +1016,11 @@ function attentionReason(appointmentReason?: string | null, followUpComplaint?: 
 function localDateKey(date: Date) {
   const pad = (value: number) => String(value).padStart(2, "0");
   return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`;
+}
+
+function localDateFromKey(value: string) {
+  const [year, month, day] = value.split("-").map(Number);
+  return new Date(year, (month || 1) - 1, day || 1);
 }
 
 function attentionLabel(sourceType: AttentionSourceType) {
@@ -952,7 +1043,7 @@ function attentionBadgeClass(sourceType: AttentionSourceType) {
 
 function formatAttentionDue(value: string, sourceType: AttentionSourceType) {
   if (sourceType === "follow_up" || sourceType === "missed_follow_up") {
-    return `Follow-up date ${new Date(value).toLocaleDateString()}`;
+    return `Follow-up date ${localDateFromKey(value).toLocaleDateString()}`;
   }
   const date = new Date(value);
   return date.toLocaleString(undefined, {
