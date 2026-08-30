@@ -349,43 +349,63 @@ function DoctorDashboard() {
 
   const attentionSummary = useMemo(() => summarizeAttention(attentionItems), [attentionItems]);
 
+  const appointmentsTodayValue = todayAppointmentsCount.data ?? 0;
+  const waitingNowValue = attentionLoading ? null : attentionSummary.urgent;
+  const followUpsDueValue = attentionLoading
+    ? null
+    : attentionSummary.dueFollowUps + attentionSummary.overdueFollowUps;
+  const revenueTodayValue = 0;
+  const outstandingValue = 0;
+
   const metricCards = [
     {
       icon: CalendarCheck,
       label: "Appointments Today",
-      value: todayAppointmentsCount.data ?? "—",
-      meta: `${todayAppointmentsCount.data ?? "—"} remaining`,
+      value: todayAppointmentsCount.isLoading ? "—" : appointmentsTodayValue,
+      meta: todayAppointmentsCount.isLoading
+        ? "Loading schedule"
+        : appointmentsTodayValue > 0
+          ? `${appointmentsTodayValue} scheduled today`
+          : "No appointments today",
       tone: "teal",
     },
     {
       icon: Users,
       label: "Waiting Now",
-      value: attentionLoading ? "—" : attentionSummary.appointmentsToday,
-      meta: `${attentionSummary.urgent} urgent`,
+      value: waitingNowValue ?? "—",
+      meta: attentionLoading
+        ? "Checking queue"
+        : waitingNowValue && waitingNowValue > 0
+          ? `${waitingNowValue} need attention`
+          : "No patients waiting",
       tone: "blue",
     },
     {
       icon: HeartPulse,
       label: "Follow-ups Due",
-      value: attentionLoading
-        ? "—"
-        : attentionSummary.dueFollowUps + attentionSummary.overdueFollowUps,
-      meta: `${attentionSummary.overdueFollowUps} overdue`,
+      value: followUpsDueValue ?? "—",
+      meta: attentionLoading
+        ? "Checking follow-ups"
+        : followUpsDueValue && followUpsDueValue > 0
+          ? attentionSummary.overdueFollowUps > 0
+            ? `${attentionSummary.overdueFollowUps} overdue`
+            : "Due today"
+          : "No follow-ups due",
       tone: "purple",
     },
     {
-      icon: AlertTriangle,
-      label: "Needs Attention",
-      value: attentionLoading ? "—" : attentionSummary.total,
-      meta: "Work queue",
-      tone: "red",
+      icon: BarChart3,
+      label: "Revenue Today",
+      value: `₹${revenueTodayValue.toLocaleString("en-IN")}`,
+      meta: revenueTodayValue > 0 ? "Payments recorded" : "No payments recorded",
+      tone: "amber",
     },
     {
-      icon: Package,
-      label: "Inventory Alerts",
-      value: lowStockRemedies.isLoading ? "—" : (lowStockRemedies.data ?? []).length,
-      meta: "Low stock",
-      tone: "amber",
+      icon: ReceiptText,
+      label: "Outstanding",
+      value: `₹${outstandingValue.toLocaleString("en-IN")}`,
+      meta: outstandingValue > 0 ? "Unpaid balance" : "No unpaid bills",
+      tone: "red",
     },
   ];
 
@@ -472,8 +492,8 @@ function DoctorDashboard() {
           <DashboardTopbar doctorName={user?.user_metadata?.full_name} />
 
           <div className="space-y-5 px-4 py-5 sm:px-6 lg:px-7">
-            <section className="grid gap-4 xl:grid-cols-[1fr_2fr] xl:items-center">
-              <div>
+            <section>
+              <div className="max-w-3xl">
                 <h1 className="text-2xl font-bold tracking-tight sm:text-3xl">
                   {greeting()}, Dr. {user?.user_metadata?.full_name ?? "Doctor"}
                 </h1>
@@ -481,14 +501,15 @@ function DoctorDashboard() {
                   Here&apos;s your clinic overview for today.
                 </p>
               </div>
-              <div className="grid gap-3 sm:grid-cols-3">
-                {quickActions.map((action) => (
-                  <QuickActionCard key={action.title} {...action} />
-                ))}
-              </div>
             </section>
 
-            <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-5">
+            <section className="grid gap-4 md:grid-cols-3">
+              {quickActions.map((action) => (
+                <QuickActionCard key={action.title} {...action} />
+              ))}
+            </section>
+
+            <section className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-[repeat(5,minmax(0,1fr))]">
               {metricCards.map((metric) => (
                 <MetricCard key={metric.label} {...metric} />
               ))}
@@ -747,7 +768,7 @@ function QuickActionCard({
   return (
     <a
       href={to}
-      className="group flex items-center gap-4 rounded-2xl border border-border/70 bg-card p-4 shadow-soft transition-smooth hover:-translate-y-0.5 hover:shadow-card"
+      className="group flex min-h-[92px] items-center gap-4 rounded-2xl border border-border/70 bg-card p-4 shadow-soft transition-smooth hover:-translate-y-0.5 hover:shadow-card"
     >
       <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-primary/10 text-primary">
         <Icon className="h-6 w-6" />
@@ -775,16 +796,19 @@ function MetricCard({
   tone: string;
 }) {
   return (
-    <div className={`rounded-2xl border p-4 shadow-soft ${metricTone(tone)}`}>
-      <div className="flex items-start justify-between gap-3">
-        <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-white/70">
+    <div
+      className={`flex min-h-[148px] flex-col rounded-2xl border p-4 shadow-soft ${metricTone(tone)}`}
+    >
+      <div className="flex items-center gap-3">
+        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-white/75 shadow-sm">
           <Icon className="h-5 w-5" />
         </div>
-        <div className="h-8 w-16 rounded-full bg-current/10" />
+        <p className="min-w-0 text-sm font-semibold leading-tight text-foreground">{label}</p>
       </div>
-      <p className="mt-3 text-sm font-semibold text-foreground">{label}</p>
-      <p className="mt-1 text-2xl font-bold text-foreground">{value}</p>
-      <p className="mt-2 text-xs font-medium text-muted-foreground">{meta}</p>
+      <p className="mt-5 text-3xl font-bold leading-none tracking-normal text-foreground">
+        {value}
+      </p>
+      <p className="mt-auto pt-3 text-xs font-medium leading-snug text-muted-foreground">{meta}</p>
     </div>
   );
 }
