@@ -455,7 +455,7 @@ function DoctorDashboard() {
     (patientCount.data ?? 0) === 0 &&
     (todayAppointmentsCount.data ?? 0) === 0;
 
-  if (!loading && role == null) {
+  if (loading) {
     return <div className="p-8 text-center text-sm text-muted-foreground">Loading...</div>;
   }
 

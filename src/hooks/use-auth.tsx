@@ -22,8 +22,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    let mounted = true;
+
     // Listener FIRST (per Supabase guidance)
     const { data: sub } = supabase.auth.onAuthStateChange((_event, newSession) => {
+      if (!mounted) return;
       setSession(newSession);
       setUser(newSession?.user ?? null);
       if (!newSession?.user) {
@@ -33,7 +36,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setLoading(true);
         // Defer role fetch to avoid deadlocks in the listener
         setTimeout(() => {
-          void fetchRole(newSession.user).then((r) => {
+          if (!mounted) return;
+          void fetchRoleSafe(newSession.user).then((r) => {
+            if (!mounted) return;
             setRole(r);
             setLoading(false);
           });
@@ -41,20 +46,34 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
     });
 
-    supabase.auth.getSession().then(({ data }) => {
-      setSession(data.session);
-      setUser(data.session?.user ?? null);
-      if (data.session?.user) {
-        void fetchRole(data.session.user).then((r) => {
-          setRole(r);
+    withTimeout(supabase.auth.getSession(), 8000, "Supabase session lookup timed out")
+      .then(({ data }) => {
+        if (!mounted) return;
+        setSession(data.session);
+        setUser(data.session?.user ?? null);
+        if (data.session?.user) {
+          void fetchRoleSafe(data.session.user).then((r) => {
+            if (!mounted) return;
+            setRole(r);
+            setLoading(false);
+          });
+        } else {
           setLoading(false);
-        });
-      } else {
+        }
+      })
+      .catch((error) => {
+        console.error("Failed to load session", error);
+        if (!mounted) return;
+        setSession(null);
+        setUser(null);
+        setRole(null);
         setLoading(false);
-      }
-    });
+      });
 
-    return () => sub.subscription.unsubscribe();
+    return () => {
+      mounted = false;
+      sub.subscription.unsubscribe();
+    };
   }, []);
 
   const value = useMemo<AuthState>(
@@ -99,4 +118,29 @@ async function fetchRole(user: User): Promise<AppRole | null> {
     return metadataRole(user);
   }
   return (data?.role as AppRole) ?? metadataRole(user);
+}
+
+async function fetchRoleSafe(user: User): Promise<AppRole | null> {
+  try {
+    return await withTimeout(fetchRole(user), 6000, "Role lookup timed out");
+  } catch (error) {
+    console.error("Failed to resolve role", error);
+    return metadataRole(user);
+  }
+}
+
+function withTimeout<T>(promise: Promise<T>, ms: number, message: string): Promise<T> {
+  return new Promise((resolve, reject) => {
+    const timer = window.setTimeout(() => reject(new Error(message)), ms);
+    promise.then(
+      (value) => {
+        window.clearTimeout(timer);
+        resolve(value);
+      },
+      (error) => {
+        window.clearTimeout(timer);
+        reject(error);
+      },
+    );
+  });
 }
