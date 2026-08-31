@@ -6,12 +6,14 @@ import {
   ArrowRight,
   AlertTriangle,
   BarChart3,
+  Bell,
   Building2,
   CalendarCheck,
   CalendarPlus,
   CheckCircle2,
   ChevronRight,
   Clock,
+  DollarSign,
   FileText,
   HelpCircle,
   HeartPulse,
@@ -370,7 +372,7 @@ function DoctorDashboard() {
       tone: "teal",
     },
     {
-      icon: Users,
+      icon: AlertTriangle,
       label: "Attention",
       value: waitingNowValue ?? "—",
       meta: attentionLoading
@@ -381,7 +383,7 @@ function DoctorDashboard() {
       tone: "blue",
     },
     {
-      icon: HeartPulse,
+      icon: Clock,
       label: "Follow-ups",
       value: followUpsDueValue ?? "—",
       meta: attentionLoading
@@ -394,10 +396,10 @@ function DoctorDashboard() {
       tone: "purple",
     },
     {
-      icon: BarChart3,
-      label: "Revenue Today",
+      icon: DollarSign,
+      label: "Revenue",
       value: `₹${revenueTodayValue.toLocaleString("en-IN")}`,
-      meta: revenueTodayValue > 0 ? "Payments recorded" : "No payments recorded",
+      meta: revenueTodayValue > 0 ? "Payments recorded" : "No payments today",
       tone: "amber",
     },
     {
@@ -413,20 +415,30 @@ function DoctorDashboard() {
     {
       icon: UserPlus,
       title: "New Patient",
-      detail: "Add a patient",
+      detail: "Register & open case",
       to: "/app/patients/new" as const,
+      tone: "teal",
     },
     {
       icon: CalendarPlus,
       title: "New Appointment",
-      detail: "Book a visit",
+      detail: "Book a visit slot",
       to: "/app/appointments" as const,
+      tone: "purple",
     },
     {
       icon: Stethoscope,
       title: "Start Consultation",
       detail: "Open patient case",
       to: "/app/patients" as const,
+      tone: "green",
+    },
+    {
+      icon: FileText,
+      title: "Write Prescription",
+      detail: "For existing patient",
+      to: "/app/patients" as const,
+      tone: "amber",
     },
   ];
 
@@ -484,32 +496,45 @@ function DoctorDashboard() {
   }
 
   return (
-    <div className="bg-[#f8fbfa]">
-      <div className="mx-auto grid min-h-[calc(100vh-4rem)] max-w-[1500px] lg:grid-cols-[250px_1fr]">
+    <div className="min-h-screen bg-[#f6f8f9]">
+      <div className="grid min-h-screen lg:grid-cols-[260px_1fr]">
         <DashboardSidebar doctorName={user?.user_metadata?.full_name} clinicName={clinic?.name} />
 
-        <main className="min-w-0 border-l border-border/70 bg-background/80">
+        <main className="min-w-0 bg-[#f6f8f9]">
           <DashboardTopbar doctorName={user?.user_metadata?.full_name} />
 
-          <div className="space-y-3 px-3 py-3 sm:space-y-4 sm:px-6 sm:py-4 lg:px-6">
-            <section>
-              <div className="max-w-3xl">
-                <h1 className="text-xl font-bold tracking-tight sm:text-2xl">
-                  {greeting()}, Dr. {user?.user_metadata?.full_name ?? "Doctor"}
+          <div className="mx-auto max-w-[1500px] space-y-5 px-4 py-6 sm:px-6 lg:px-8">
+            <section className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
+              <div>
+                <h1 className="font-serif text-[32px] font-bold leading-tight tracking-normal text-[#111827] sm:text-[38px]">
+                  {greeting()},{" "}
+                  <span className="text-[#0b8f7f]">
+                    Dr. {user?.user_metadata?.full_name ?? "Doctor"}
+                  </span>
                 </h1>
-                <p className="mt-1 text-xs text-muted-foreground sm:text-sm">
-                  Here&apos;s your clinic overview for today.
+                <p className="mt-2 text-sm text-muted-foreground">
+                  Here is your clinic overview for today —{" "}
+                  {new Date().toLocaleDateString(undefined, {
+                    day: "2-digit",
+                    month: "long",
+                    year: "numeric",
+                    weekday: "long",
+                  })}
                 </p>
               </div>
+              <span className="inline-flex w-fit items-center gap-2 rounded-2xl bg-[#c9f7ea] px-5 py-3 text-sm font-semibold text-[#087466]">
+                <span className="h-2 w-2 rounded-full bg-[#0b8f7f]" />
+                Clinic Open
+              </span>
             </section>
 
-            <section className="grid grid-cols-3 gap-2 sm:gap-4">
+            <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
               {quickActions.map((action) => (
                 <QuickActionCard key={action.title} {...action} />
               ))}
             </section>
 
-            <section className="-mx-3 flex gap-2 overflow-x-auto px-3 pb-1 sm:mx-0 sm:grid sm:grid-cols-2 sm:gap-4 sm:px-0 sm:pb-0 lg:grid-cols-3 xl:grid-cols-[repeat(5,minmax(0,1fr))]">
+            <section className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-[repeat(5,minmax(0,1fr))]">
               {metricCards.map((metric) => (
                 <MetricCard key={metric.label} {...metric} />
               ))}
@@ -523,7 +548,7 @@ function DoctorDashboard() {
               />
             )}
 
-            <section className="grid gap-4 xl:grid-cols-[1.35fr_0.9fr]">
+            <section className="grid gap-6 xl:grid-cols-[1.7fr_1fr]">
               <AttentionQueue
                 loading={attentionLoading}
                 items={attentionItems}
@@ -587,27 +612,27 @@ function AppointmentPanel({
   compact?: boolean;
 }) {
   return (
-    <div className="rounded-2xl border border-border/60 bg-card p-5 shadow-card">
+    <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-card">
       <div className="mb-3 flex items-center justify-between gap-3">
-        <h2 className="text-base font-bold tracking-tight">{title}</h2>
+        <h2 className="font-serif text-2xl font-bold tracking-normal text-slate-950">{title}</h2>
         <Link
           to="/app/appointments"
-          className="inline-flex items-center gap-1 text-xs font-semibold text-primary"
+          className="inline-flex items-center gap-1 text-sm font-semibold text-[#0b8f7f]"
         >
           Manage <ArrowRight className="h-3 w-3" />
         </Link>
       </div>
 
       {loading ? (
-        <div className="rounded-2xl border border-border/60 bg-background p-5 text-center text-sm text-muted-foreground">
+        <div className="rounded-2xl border border-slate-200 bg-slate-50 p-5 text-center text-sm text-slate-500">
           Loading appointments...
         </div>
       ) : appointments.length === 0 ? (
-        <div className="rounded-2xl border border-dashed border-border bg-background/60 p-5 text-center text-sm text-muted-foreground">
+        <div className="rounded-2xl border border-dashed border-slate-200 bg-slate-50 p-5 text-center text-sm text-slate-500">
           {empty}
         </div>
       ) : (
-        <div className="space-y-2">
+        <div className="space-y-1">
           {appointments.map((appointment) => (
             <DashboardAppointmentCard
               key={appointment.id}
@@ -635,68 +660,78 @@ function DashboardSidebar({
     { icon: Users, label: "Patients", href: "/app/patients" },
     { icon: Stethoscope, label: "Consultations", href: "/app/patients" },
     { icon: ReceiptText, label: "Prescriptions", href: "/app/patients" },
+    { section: true, label: "Operational" },
     { icon: Package, label: "Inventory", href: "/app/remedies" },
     { icon: BarChart3, label: "Follow-ups", href: "/app/follow-ups" },
   ];
 
   return (
-    <aside className="hidden bg-card px-5 py-7 lg:block">
-      <div className="flex items-center gap-3 text-primary">
-        <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-primary/10">
-          <HeartPulse className="h-6 w-6" />
+    <aside className="hidden bg-[#101b24] px-5 py-7 text-[#8fa1ad] lg:flex lg:min-h-screen lg:flex-col">
+      <div className="flex items-center gap-3 text-white">
+        <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-[#0b8f7f] text-white shadow-soft">
+          <HeartPulse className="h-5 w-5" />
         </div>
         <div>
-          <p className="text-lg font-bold leading-tight text-foreground">HomeoCare</p>
-          <p className="text-xs font-medium text-muted-foreground">Doctor</p>
+          <p className="text-lg font-bold leading-tight text-white">HomeoCare</p>
+          <p className="text-xs font-medium text-[#7f919d]">Doctor Portal</p>
         </div>
       </div>
 
-      <nav className="mt-8 space-y-1.5">
-        {nav.map((item) => (
-          <a
-            key={item.label}
-            href={item.href}
-            className={`flex items-center gap-3 rounded-2xl px-3.5 py-3 text-sm font-semibold transition-smooth ${
-              item.active
-                ? "bg-gradient-soft text-primary shadow-soft"
-                : "text-muted-foreground hover:bg-muted hover:text-foreground"
-            }`}
-          >
-            <item.icon className="h-[18px] w-[18px]" />
-            {item.label}
-          </a>
-        ))}
+      <nav className="mt-10 space-y-2">
+        <p className="px-1 pb-1 text-[11px] font-semibold uppercase tracking-[0.18em] text-[#536673]">
+          Clinical
+        </p>
+        {nav.map((item) =>
+          "section" in item ? (
+            <p
+              key={item.label}
+              className="px-1 pb-1 pt-7 text-[11px] font-semibold uppercase tracking-[0.18em] text-[#536673]"
+            >
+              {item.label}
+            </p>
+          ) : (
+            <a
+              key={item.label}
+              href={item.href}
+              className={`group flex items-center gap-3 rounded-xl px-3.5 py-3 text-sm font-semibold transition-smooth ${
+                item.active
+                  ? "bg-[#153743] text-[#45d2bd]"
+                  : "text-[#8fa1ad] hover:bg-white/5 hover:text-white"
+              }`}
+            >
+              <item.icon className="h-[18px] w-[18px]" />
+              <span className="flex-1">{item.label}</span>
+              {item.active && <span className="h-1.5 w-1.5 rounded-full bg-[#45d2bd]" />}
+            </a>
+          ),
+        )}
       </nav>
 
-      <div className="mt-12 border-t border-border/70 pt-5">
+      <div className="mt-auto border-t border-white/10 pt-5">
         <a
           href="/app/clinic"
-          className="flex items-center gap-3 rounded-2xl px-3.5 py-3 text-sm font-semibold text-muted-foreground transition-smooth hover:bg-muted hover:text-foreground"
+          className="flex items-center gap-3 rounded-xl px-3.5 py-3 text-sm font-semibold text-[#8fa1ad] transition-smooth hover:bg-white/5 hover:text-white"
         >
           <Settings className="h-[18px] w-[18px]" />
           Settings
         </a>
         <a
           href="/app/whatsapp-status"
-          className="flex items-center gap-3 rounded-2xl px-3.5 py-3 text-sm font-semibold text-muted-foreground transition-smooth hover:bg-muted hover:text-foreground"
+          className="flex items-center gap-3 rounded-xl px-3.5 py-3 text-sm font-semibold text-[#8fa1ad] transition-smooth hover:bg-white/5 hover:text-white"
         >
           <HelpCircle className="h-[18px] w-[18px]" />
           Help & Support
         </a>
       </div>
 
-      <div className="mt-10 rounded-2xl border border-border/70 bg-background p-4 shadow-soft">
+      <div className="mt-6 rounded-2xl border border-white/10 bg-white/5 p-4">
         <div className="flex items-center gap-3">
-          <div className="flex h-10 w-10 items-center justify-center rounded-full bg-gradient-primary text-sm font-bold text-primary-foreground">
+          <div className="flex h-10 w-10 items-center justify-center rounded-full bg-[#0b8f7f] text-sm font-bold text-white">
             {initials(doctorName ?? "Doctor")}
           </div>
           <div className="min-w-0">
-            <p className="truncate text-sm font-bold text-foreground">
-              Dr. {doctorName ?? "Doctor"}
-            </p>
-            <p className="truncate text-xs text-muted-foreground">
-              {clinicName ?? "HomeoCare Clinic"}
-            </p>
+            <p className="truncate text-sm font-bold text-white">Dr. {doctorName ?? "Doctor"}</p>
+            <p className="truncate text-xs text-[#8fa1ad]">{clinicName ?? "HomeoCare Clinic"}</p>
           </div>
         </div>
       </div>
@@ -708,30 +743,30 @@ function DashboardTopbar({ doctorName }: { doctorName?: string | null }) {
   const today = new Date();
 
   return (
-    <div className="sticky top-16 z-30 border-b border-border/70 bg-background/90 px-3 py-2 backdrop-blur-md sm:px-6 lg:px-6">
-      <div className="flex items-center justify-between gap-3">
+    <div className="sticky top-0 z-30 border-b border-slate-200 bg-white px-4 py-4 sm:px-6 lg:px-8">
+      <div className="mx-auto flex max-w-[1500px] items-center justify-between gap-5">
         <div className="flex items-center gap-3">
           <button
             type="button"
-            className="flex h-10 w-10 items-center justify-center rounded-2xl border border-border bg-card text-muted-foreground lg:hidden"
+            className="flex h-10 w-10 items-center justify-center rounded-xl text-slate-700 transition-smooth hover:bg-slate-100"
             aria-label="Open dashboard menu"
           >
             <Menu className="h-5 w-5" />
           </button>
           <div className="relative hidden w-full min-w-0 md:block lg:w-[430px]">
-            <Search className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+            <Search className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
             <input
               placeholder="Search patients, appointments..."
-              className="h-11 w-full rounded-2xl border border-border bg-card pl-11 pr-16 text-sm text-foreground shadow-soft outline-none transition-smooth focus:border-primary/40 focus:ring-4 focus:ring-primary/10"
+              className="h-11 w-full rounded-xl border border-[#e6eaee] bg-[#f8fafb] pl-11 pr-16 text-sm text-slate-900 outline-none transition-smooth focus:border-[#0b8f7f]/40 focus:bg-white focus:ring-4 focus:ring-[#0b8f7f]/10"
             />
-            <span className="pointer-events-none absolute right-3 top-1/2 hidden -translate-y-1/2 rounded-lg border border-border bg-background px-2 py-1 text-[11px] font-semibold text-muted-foreground sm:inline">
-              Ctrl K
+            <span className="pointer-events-none absolute right-3 top-1/2 hidden -translate-y-1/2 rounded-md border border-slate-200 bg-white px-2 py-1 text-[11px] font-semibold text-slate-400 sm:inline">
+              ⌘ K
             </span>
           </div>
         </div>
-        <div className="flex items-center justify-end gap-2 text-xs text-foreground sm:text-sm">
-          <div className="inline-flex items-center gap-1.5 rounded-2xl bg-card px-2.5 py-2 font-semibold shadow-soft sm:gap-2 sm:px-3">
-            <CalendarCheck className="h-4 w-4 text-primary" />
+        <div className="flex items-center justify-end gap-3 text-xs text-slate-900 sm:text-sm">
+          <div className="hidden items-center gap-2 px-2.5 py-2 font-semibold sm:inline-flex">
+            <CalendarCheck className="h-4 w-4 text-slate-700" />
             {today.toLocaleDateString(undefined, {
               day: "2-digit",
               month: "short",
@@ -739,14 +774,22 @@ function DashboardTopbar({ doctorName }: { doctorName?: string | null }) {
               weekday: "short",
             })}
           </div>
-          <div className="hidden h-9 w-9 items-center justify-center rounded-2xl bg-card text-primary shadow-soft sm:flex">
-            <MessageCircle className="h-4 w-4" />
+          <div className="relative hidden h-10 w-10 items-center justify-center rounded-xl bg-slate-50 text-slate-700 sm:flex">
+            <Bell className="h-4 w-4" />
+            <span className="absolute right-2 top-2 h-2 w-2 rounded-full bg-[#e34262]" />
           </div>
-          <div className="flex items-center gap-2 rounded-2xl bg-card px-2.5 py-2 shadow-soft sm:px-3">
-            <div className="flex h-8 w-8 items-center justify-center rounded-full bg-gradient-primary text-xs font-bold text-primary-foreground">
+          <div className="relative hidden h-10 w-10 items-center justify-center rounded-xl bg-[#f8fafb] text-[#0b8f7f] sm:flex">
+            <MessageCircle className="h-4 w-4" />
+            <span className="absolute right-1.5 top-1.5 rounded-full bg-[#0b8f7f] px-1 text-[10px] font-bold leading-4 text-white">
+              4
+            </span>
+          </div>
+          <div className="flex items-center gap-2 rounded-xl px-1.5 py-1">
+            <div className="flex h-8 w-8 items-center justify-center rounded-full bg-[#0b8f7f] text-xs font-bold text-white">
               {initials(doctorName ?? "Doctor")}
             </div>
             <span className="hidden font-semibold sm:inline">Dr. {doctorName ?? "Doctor"}</span>
+            <ChevronRight className="hidden h-4 w-4 rotate-90 text-slate-400 sm:block" />
           </div>
         </div>
       </div>
@@ -759,27 +802,29 @@ function QuickActionCard({
   title,
   detail,
   to,
+  tone,
 }: {
   icon: ComponentType<{ className?: string }>;
   title: string;
   detail: string;
   to: string;
+  tone: string;
 }) {
   return (
     <a
       href={to}
-      className="group flex min-h-[64px] flex-col items-center justify-center gap-1.5 rounded-2xl border border-border/70 bg-card px-2 py-2 text-center shadow-soft transition-smooth hover:-translate-y-0.5 hover:shadow-card sm:min-h-[68px] sm:flex-row sm:justify-start sm:gap-3 sm:px-3.5 sm:py-3 sm:text-left"
+      className="group flex min-h-[90px] items-center gap-4 rounded-2xl border border-[#e6eaee] bg-white px-5 py-4 shadow-card transition-smooth hover:-translate-y-0.5 hover:border-[#0b8f7f]/30 hover:shadow-soft"
     >
-      <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary sm:h-9 sm:w-9">
-        <Icon className="h-4 w-4 sm:h-5 sm:w-5" />
+      <div
+        className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-xl ${quickActionTone(tone)}`}
+      >
+        <Icon className="h-5 w-5" />
       </div>
-      <div className="min-w-0 sm:flex-1">
-        <p className="text-sm font-bold leading-tight text-foreground">{title}</p>
-        <p className="mt-0.5 hidden text-xs leading-tight text-muted-foreground sm:block">
-          {detail}
-        </p>
+      <div className="min-w-0 flex-1">
+        <p className="text-sm font-bold leading-snug text-slate-950">{title}</p>
+        <p className="mt-1 text-xs leading-tight text-slate-500">{detail}</p>
       </div>
-      <ChevronRight className="hidden h-4 w-4 text-muted-foreground transition-transform group-hover:translate-x-0.5 sm:block" />
+      <ChevronRight className="h-4 w-4 shrink-0 text-slate-300 transition-transform group-hover:translate-x-0.5 group-hover:text-[#0b8f7f]" />
     </a>
   );
 }
@@ -798,23 +843,20 @@ function MetricCard({
   tone: string;
 }) {
   return (
-    <div
-      className={`flex min-h-[104px] w-[122px] shrink-0 flex-col rounded-2xl border px-3 py-3 shadow-soft sm:w-auto sm:px-3.5 ${metricTone(tone)}`}
-    >
-      <div className="flex items-center gap-2.5">
-        <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-white/75 shadow-sm">
+    <div className="flex min-h-[166px] flex-col rounded-2xl border border-slate-200 bg-white px-5 py-5 shadow-card">
+      <div className="flex items-start justify-between gap-3">
+        <div
+          className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl ${metricTone(tone)}`}
+        >
           <Icon className="h-4 w-4" />
         </div>
-        <p className="min-w-0 text-[11px] font-semibold leading-tight text-foreground sm:text-xs">
-          {label}
-        </p>
+        <MiniTrend tone={tone} />
       </div>
-      <p className="mt-3 text-2xl font-bold leading-none tracking-normal text-foreground">
+      <p className="mt-5 text-[30px] font-bold leading-none tracking-normal text-slate-950">
         {value}
       </p>
-      <p className="mt-auto pt-2 text-[11px] font-medium leading-snug text-muted-foreground sm:text-xs">
-        {meta}
-      </p>
+      <p className="mt-2 text-xs leading-snug text-slate-500">{meta}</p>
+      <p className="mt-auto pt-4 text-sm font-semibold text-slate-700">{label}</p>
     </div>
   );
 }
@@ -840,7 +882,7 @@ function OnboardingPanel({
   steps: Array<{ label: string; detail: string; done: boolean; to: string }>;
 }) {
   return (
-    <section className="rounded-2xl border border-primary/15 bg-primary/5 p-4 shadow-soft">
+    <section className="rounded-2xl border border-[#c9f7ea] bg-[#effbf7] p-4 shadow-soft">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <p className="text-sm font-bold text-foreground">Finish first clinic setup</p>
@@ -848,7 +890,7 @@ function OnboardingPanel({
             Shown only while your clinic is still empty. Full setup remains available in settings.
           </p>
         </div>
-        <span className="rounded-full bg-card px-3 py-1 text-xs font-bold text-primary shadow-soft">
+        <span className="rounded-full bg-white px-3 py-1 text-xs font-bold text-[#0b8f7f] shadow-soft">
           {completedSteps}/{totalSteps} done
         </span>
       </div>
@@ -977,11 +1019,11 @@ function DashboardPanel({
   children: ReactNode;
 }) {
   return (
-    <section className="rounded-2xl border border-border/60 bg-card p-5 shadow-card">
+    <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-card">
       <div className="mb-4 flex items-center justify-between gap-3">
-        <h2 className="text-base font-bold tracking-tight">{title}</h2>
+        <h2 className="text-base font-bold tracking-tight text-slate-950">{title}</h2>
         {href && (
-          <a href={href} className="text-xs font-bold text-primary">
+          <a href={href} className="text-xs font-bold text-[#0b8f7f]">
             View all
           </a>
         )}
@@ -993,7 +1035,7 @@ function DashboardPanel({
 
 function PanelEmpty({ children }: { children: ReactNode }) {
   return (
-    <div className="rounded-2xl border border-dashed border-border bg-background/60 p-6 text-center text-sm text-muted-foreground">
+    <div className="rounded-2xl border border-dashed border-slate-200 bg-slate-50 p-6 text-center text-sm text-slate-500">
       {children}
     </div>
   );
@@ -1001,9 +1043,9 @@ function PanelEmpty({ children }: { children: ReactNode }) {
 
 function ProTip() {
   return (
-    <div className="flex flex-col gap-3 rounded-2xl border border-primary/15 bg-primary/5 p-4 shadow-soft sm:flex-row sm:items-center sm:justify-between">
+    <div className="flex flex-col gap-3 rounded-2xl border border-[#c9f7ea] bg-[#effbf7] p-4 shadow-soft sm:flex-row sm:items-center sm:justify-between">
       <div className="flex items-center gap-3">
-        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-card text-primary shadow-soft">
+        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-white text-[#0b8f7f] shadow-soft">
           <Lightbulb className="h-5 w-5" />
         </div>
         <p className="text-sm text-muted-foreground">
@@ -1011,7 +1053,7 @@ function ProTip() {
           diagnosis, prescription, and follow-up for a patient.
         </p>
       </div>
-      <button type="button" className="self-start text-xs font-bold text-primary sm:self-auto">
+      <button type="button" className="self-start text-xs font-bold text-[#0b8f7f] sm:self-auto">
         Dismiss
       </button>
     </div>
@@ -1032,23 +1074,30 @@ function AttentionQueue({
   onSetAppointmentStatus: (id: string, status: AppointmentStatus) => void;
 }) {
   return (
-    <section className="rounded-3xl border border-primary/15 bg-card p-4 shadow-card sm:p-5">
+    <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-card">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div>
-          <p className="text-xs font-semibold uppercase tracking-wide text-primary">
+          <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[#0b8f7f]">
             Priority work
           </p>
-          <h2 className="mt-1 text-lg font-bold tracking-tight sm:text-xl">Today&apos;s Queue</h2>
-          <p className="mt-1 max-w-2xl text-xs text-muted-foreground sm:text-sm">
+          <h2 className="mt-1 font-serif text-2xl font-bold tracking-normal text-slate-950">
+            Today&apos;s Queue
+          </h2>
+          <p className="mt-1 max-w-2xl text-sm text-slate-500">
             Appointments, follow-ups, missed visits, and work needing closure.
           </p>
         </div>
-        <div className="rounded-full bg-secondary px-3 py-1 text-xs font-semibold text-secondary-foreground">
-          {summary.total} active{summary.urgent > 0 ? ` · ${summary.urgent} urgent` : ""}
+        <div className="flex items-center gap-2 text-sm text-slate-500">
+          <span>{summary.total} patients</span>
+          {summary.urgent > 0 && (
+            <span className="rounded-full bg-[#fff0f4] px-2.5 py-1 text-xs font-bold text-[#e34262]">
+              {summary.urgent} urgent
+            </span>
+          )}
         </div>
       </div>
 
-      <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-5">
+      <div className="mt-4 grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-5">
         <AttentionSummaryPill label="Today visits" value={summary.appointmentsToday} />
         <AttentionSummaryPill label="Due follow-ups" value={summary.dueFollowUps} />
         <AttentionSummaryPill label="Overdue follow-ups" value={summary.overdueFollowUps} urgent />
@@ -1057,19 +1106,19 @@ function AttentionQueue({
       </div>
 
       {loading ? (
-        <div className="mt-3 rounded-2xl border border-border/60 bg-background p-5 text-center text-sm text-muted-foreground">
+        <div className="mt-4 rounded-2xl border border-slate-200 bg-slate-50 p-5 text-center text-sm text-slate-500">
           Loading today&apos;s attention queue...
         </div>
       ) : items.length === 0 ? (
-        <div className="mt-3 rounded-2xl border border-dashed border-border bg-background/60 p-6 text-center">
-          <div className="mx-auto flex h-10 w-10 items-center justify-center rounded-2xl bg-secondary text-secondary-foreground">
+        <div className="mt-4 rounded-2xl border border-dashed border-slate-200 bg-slate-50 p-6 text-center">
+          <div className="mx-auto flex h-10 w-10 items-center justify-center rounded-2xl bg-[#e8fbf6] text-[#0b8f7f]">
             <CheckCircle2 className="h-5 w-5" />
           </div>
-          <p className="mt-3 text-sm font-semibold text-foreground">No pending patient actions</p>
-          <p className="mt-1 text-xs text-muted-foreground">Today&apos;s clinic queue is clear.</p>
+          <p className="mt-3 text-sm font-semibold text-slate-950">No pending patient actions</p>
+          <p className="mt-1 text-xs text-slate-500">Today&apos;s clinic queue is clear.</p>
         </div>
       ) : (
-        <div className="mt-3 space-y-2">
+        <div className="mt-4 space-y-2">
           {items.map((item) => (
             <AttentionQueueCard
               key={item.id}
@@ -1095,14 +1144,14 @@ function AttentionSummaryPill({
 }) {
   return (
     <div
-      className={`rounded-2xl border px-3 py-2 ${
+      className={`rounded-xl border px-3 py-2 ${
         urgent && value > 0
-          ? "border-destructive/20 bg-destructive/10 text-destructive"
-          : "border-border/60 bg-background text-foreground"
+          ? "border-[#ffdbe4] bg-[#fff0f4] text-[#e34262]"
+          : "border-slate-200 bg-slate-50 text-slate-900"
       }`}
     >
       <p className="text-lg font-bold leading-none">{value}</p>
-      <p className="mt-1 text-[11px] font-semibold uppercase tracking-wide opacity-75">{label}</p>
+      <p className="mt-1 text-[10px] font-semibold uppercase tracking-wide opacity-70">{label}</p>
     </div>
   );
 }
@@ -1128,14 +1177,12 @@ function AttentionQueueCard({
     : undefined;
 
   return (
-    <div className="rounded-2xl border border-border/60 bg-background p-4">
+    <div className="rounded-xl border border-slate-200 bg-slate-50/80 p-4">
       <div className="flex flex-col gap-3 lg:flex-row lg:items-center">
         <div className="flex items-start gap-3 lg:flex-1">
           <div
             className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-xl ${
-              item.priority <= 2
-                ? "bg-destructive/10 text-destructive"
-                : "bg-secondary text-secondary-foreground"
+              item.priority <= 2 ? "bg-[#fff0f4] text-[#e34262]" : "bg-[#e8fbf6] text-[#0b8f7f]"
             }`}
           >
             {item.priority <= 2 ? (
@@ -1146,13 +1193,13 @@ function AttentionQueueCard({
           </div>
           <div className="min-w-0">
             <div className="flex flex-wrap items-center gap-2">
-              <p className="font-semibold text-foreground">{item.patientName}</p>
+              <p className="font-semibold text-slate-950">{item.patientName}</p>
               <span className={attentionBadgeClass(item.sourceType)}>
                 {attentionLabel(item.sourceType)}
               </span>
             </div>
-            <p className="mt-1 text-sm text-foreground">{item.title}</p>
-            <p className="mt-0.5 text-xs text-muted-foreground">
+            <p className="mt-1 text-sm text-slate-700">{item.title}</p>
+            <p className="mt-0.5 text-xs text-slate-500">
               {formatAttentionDue(item.dueAt, item.sourceType)}
               {item.reason ? ` · ${item.reason}` : ""}
               {!item.phone ? " · no WhatsApp number" : ""}
@@ -1164,7 +1211,7 @@ function AttentionQueueCard({
           {patientRoute && (
             <a
               href={patientRoute}
-              className="inline-flex h-9 items-center gap-1.5 rounded-full border border-border bg-card px-3 text-xs font-semibold text-foreground transition-smooth hover:bg-muted"
+              className="inline-flex h-9 items-center gap-1.5 rounded-full border border-slate-200 bg-white px-3 text-xs font-semibold text-slate-700 transition-smooth hover:bg-slate-100"
             >
               <FileText className="h-3.5 w-3.5" /> Case
             </a>
@@ -1172,7 +1219,7 @@ function AttentionQueueCard({
           {recordVisitHref && (
             <a
               href={recordVisitHref}
-              className="inline-flex h-9 items-center gap-1.5 rounded-full bg-gradient-primary px-3 text-xs font-semibold text-primary-foreground shadow-soft"
+              className="inline-flex h-9 items-center gap-1.5 rounded-full bg-[#0b8f7f] px-3 text-xs font-semibold text-white shadow-soft"
             >
               <Stethoscope className="h-3.5 w-3.5" /> Record visit
             </a>
@@ -1182,7 +1229,7 @@ function AttentionQueueCard({
               href={whatsappHref}
               target="_blank"
               rel="noreferrer"
-              className="inline-flex h-9 items-center gap-1.5 rounded-full border border-border bg-card px-3 text-xs font-semibold text-foreground transition-smooth hover:bg-muted"
+              className="inline-flex h-9 items-center gap-1.5 rounded-full border border-slate-200 bg-white px-3 text-xs font-semibold text-slate-700 transition-smooth hover:bg-slate-100"
             >
               <MessageCircle className="h-3.5 w-3.5" /> WhatsApp
             </a>
@@ -1197,7 +1244,7 @@ function AttentionQueueCard({
                 if (confirmed) onSetAppointmentStatus(item.appointmentId!, "completed");
               }}
               disabled={updatingAppointmentId === item.appointmentId}
-              className="inline-flex h-9 items-center gap-1.5 rounded-full border border-primary/30 bg-primary/10 px-3 text-xs font-semibold text-primary transition-smooth hover:bg-primary/15 disabled:opacity-60"
+              className="inline-flex h-9 items-center gap-1.5 rounded-full border border-[#c9f7ea] bg-[#e8fbf6] px-3 text-xs font-semibold text-[#0b8f7f] transition-smooth hover:bg-[#dff8f2] disabled:opacity-60"
             >
               <CheckCircle2 className="h-3.5 w-3.5" /> Complete
             </button>
@@ -1207,7 +1254,7 @@ function AttentionQueueCard({
               type="button"
               onClick={() => onSetAppointmentStatus(item.appointmentId!, "no_show")}
               disabled={updatingAppointmentId === item.appointmentId}
-              className="inline-flex h-9 items-center gap-1.5 rounded-full border border-destructive/25 bg-destructive/10 px-3 text-xs font-semibold text-destructive transition-smooth hover:bg-destructive/15 disabled:opacity-60"
+              className="inline-flex h-9 items-center gap-1.5 rounded-full border border-[#ffdbe4] bg-[#fff0f4] px-3 text-xs font-semibold text-[#e34262] transition-smooth hover:bg-[#ffe5ec] disabled:opacity-60"
             >
               No-show
             </button>
@@ -1233,26 +1280,26 @@ function DashboardAppointmentCard({
 
   if (compact) {
     return (
-      <div className="grid grid-cols-[72px_1fr_auto] items-center gap-3 border-b border-border/70 py-3 last:border-b-0">
-        <div className="flex items-center gap-2 text-sm font-bold text-foreground">
+      <div className="grid grid-cols-[82px_1fr_auto] items-center gap-3 border-b border-slate-100 py-3 last:border-b-0">
+        <div className="flex items-center gap-2 text-sm font-bold text-slate-950">
           <span
             className={`h-2 w-2 rounded-full ${
               status === "completed"
-                ? "bg-primary"
+                ? "bg-[#0b8f7f]"
                 : status === "no_show"
-                  ? "bg-destructive"
+                  ? "bg-[#e34262]"
                   : isAppointmentPast(appointment)
-                    ? "bg-amber-500"
-                    : "bg-blue-500"
+                    ? "bg-[#d89a00]"
+                    : "bg-[#2563eb]"
             }`}
           />
           {dt.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
         </div>
         <div className="min-w-0">
-          <p className="truncate text-sm font-bold text-foreground">
+          <p className="truncate text-sm font-bold text-slate-950">
             {patient?.full_name ?? "Unknown patient"}
           </p>
-          <p className="truncate text-xs text-muted-foreground">
+          <p className="truncate text-xs text-slate-500">
             {appointment.reason ?? "Consultation"} · {appointment.duration_minutes} min
           </p>
         </div>
@@ -1261,14 +1308,14 @@ function DashboardAppointmentCard({
           {patient && showVisitAction && (
             <a
               href={`/app/patients/${patient.id}?newVisit=1&appointmentId=${appointment.id}`}
-              className="hidden rounded-full bg-primary/10 px-3 py-1.5 text-xs font-bold text-primary transition-smooth hover:bg-primary/15 sm:inline-flex"
+              className="hidden rounded-full bg-[#e8fbf6] px-3 py-1.5 text-xs font-bold text-[#0b8f7f] transition-smooth hover:bg-[#dff8f2] sm:inline-flex"
             >
               Start
             </a>
           )}
           {patient && (
             <a href={`/app/patients/${patient.id}`} aria-label={`Open ${patient.full_name}`}>
-              <ChevronRight className="h-4 w-4 text-muted-foreground" />
+              <ChevronRight className="h-4 w-4 text-slate-400" />
             </a>
           )}
         </div>
@@ -1310,7 +1357,7 @@ function DashboardAppointmentCard({
             {showVisitAction && (
               <a
                 href={`/app/patients/${patient.id}?newVisit=1&appointmentId=${appointment.id}`}
-                className="inline-flex h-9 items-center gap-1.5 rounded-full bg-gradient-primary px-3 text-xs font-semibold text-primary-foreground shadow-soft"
+                className="inline-flex h-9 items-center gap-1.5 rounded-full bg-[#0b8f7f] px-3 text-xs font-semibold text-white shadow-soft"
               >
                 <Stethoscope className="h-3.5 w-3.5" /> Record
               </a>
@@ -1478,11 +1525,42 @@ function initials(name: string) {
 }
 
 function metricTone(tone: string) {
-  if (tone === "blue") return "border-blue-100 bg-blue-50/80 text-blue-600";
-  if (tone === "purple") return "border-violet-100 bg-violet-50/80 text-violet-600";
-  if (tone === "red") return "border-red-100 bg-red-50/80 text-red-600";
-  if (tone === "amber") return "border-amber-100 bg-amber-50/80 text-amber-600";
-  return "border-teal-100 bg-teal-50/80 text-teal-600";
+  if (tone === "blue") return "border-[#dbeafe] bg-[#eef6ff] text-[#2563eb]";
+  if (tone === "purple") return "border-[#eadcff] bg-[#f3ebff] text-[#7c3aed]";
+  if (tone === "red") return "border-[#ffdbe4] bg-[#fff0f4] text-[#e34262]";
+  if (tone === "amber") return "border-[#ffefc2] bg-[#fff7df] text-[#d89a00]";
+  return "border-[#c9f7ea] bg-[#e8fbf6] text-[#0b8f7f]";
+}
+
+function quickActionTone(tone: string) {
+  if (tone === "purple") return "bg-[#f3ebff] text-[#7c3aed]";
+  if (tone === "amber") return "bg-[#fff3cf] text-[#d89a00]";
+  if (tone === "green") return "bg-[#dff9ef] text-[#13a476]";
+  return "bg-[#dff8f2] text-[#0b8f7f]";
+}
+
+function trendTone(tone: string) {
+  if (tone === "blue") return "text-[#2563eb]";
+  if (tone === "purple") return "text-[#7c3aed]";
+  if (tone === "red") return "text-[#e34262]";
+  if (tone === "amber") return "text-[#d89a00]";
+  return "text-[#0b8f7f]";
+}
+
+function MiniTrend({ tone }: { tone: string }) {
+  return (
+    <svg className={`mt-1 h-9 w-16 ${trendTone(tone)}`} viewBox="0 0 64 36" aria-hidden="true">
+      <path
+        d="M2 28 L10 24 L17 16 L25 23 L32 8 L41 20 L49 13 L62 18"
+        fill="none"
+        stroke="currentColor"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        strokeWidth="2"
+        opacity="0.7"
+      />
+    </svg>
+  );
 }
 
 function isAppointmentPast(appointment: DashboardAppointment) {
@@ -1501,10 +1579,10 @@ function scheduleStatusLabel(appointment: DashboardAppointment) {
 
 function scheduleStatusClass(status: AppointmentStatus) {
   const base = "hidden rounded-full px-3 py-1.5 text-xs font-bold sm:inline-flex";
-  if (status === "completed") return `${base} bg-primary/10 text-primary`;
+  if (status === "completed") return `${base} bg-[#e8fbf6] text-[#0b8f7f]`;
   if (status === "cancelled") return `${base} bg-muted text-muted-foreground`;
-  if (status === "no_show") return `${base} bg-destructive/10 text-destructive`;
-  return `${base} bg-blue-50 text-blue-700`;
+  if (status === "no_show") return `${base} bg-[#fff0f4] text-[#e34262]`;
+  return `${base} bg-[#eef6ff] text-[#2563eb]`;
 }
 
 function attentionReason(appointmentReason?: string | null, followUpComplaint?: string | null) {
@@ -1536,11 +1614,11 @@ function attentionLabel(sourceType: AttentionSourceType) {
 function attentionBadgeClass(sourceType: AttentionSourceType) {
   const base = "rounded-full px-2 py-0.5 text-[10px] font-semibold";
   if (sourceType === "missed_follow_up" || sourceType === "no_show") {
-    return `${base} bg-destructive/10 text-destructive`;
+    return `${base} bg-[#fff0f4] text-[#e34262]`;
   }
-  if (sourceType === "needs_closure") return `${base} bg-amber-100 text-amber-800`;
-  if (sourceType === "follow_up") return `${base} bg-primary/10 text-primary`;
-  return `${base} bg-secondary text-secondary-foreground`;
+  if (sourceType === "needs_closure") return `${base} bg-[#fff3cf] text-[#b67b00]`;
+  if (sourceType === "follow_up") return `${base} bg-[#e8fbf6] text-[#0b8f7f]`;
+  return `${base} bg-[#eef6ff] text-[#2563eb]`;
 }
 
 function formatAttentionDue(value: string, sourceType: AttentionSourceType) {
