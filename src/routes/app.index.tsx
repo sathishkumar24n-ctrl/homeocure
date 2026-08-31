@@ -509,7 +509,7 @@ function DoctorDashboard() {
               ))}
             </section>
 
-            <section className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 min-[1440px]:grid-cols-[repeat(5,minmax(0,1fr))]">
+            <section className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-[repeat(5,minmax(0,1fr))]">
               {metricCards.map((metric) => (
                 <MetricCard key={metric.label} {...metric} />
               ))}
