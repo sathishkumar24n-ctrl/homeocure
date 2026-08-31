@@ -82,7 +82,9 @@ function serveEmbeddedPublicAsset(pathname) {
   return new Response(bytes, {
     headers: {
       "content-type": asset.type,
-      "cache-control": pathname.startsWith("/assets/") ? "public, max-age=31536000, immutable" : "public, max-age=3600"
+      "cache-control": pathname.startsWith("/assets/") || pathname.startsWith("/app-assets/")
+        ? "public, max-age=31536000, immutable"
+        : "no-cache, no-store, must-revalidate"
     }
   });
 }
@@ -112,6 +114,20 @@ await mkdir(publicDir, { recursive: true });
 await cp(join(outputDir, "server"), serverDir, { recursive: true });
 await cp(join(outputDir, "public"), publicDir, { recursive: true });
 await copyFile(join(serverDir, "index.mjs"), join(serverDir, "index.js"));
+await writeFile(
+  join(publicDir, "_headers"),
+  [
+    "/*",
+    "  Cache-Control: no-cache, no-store, must-revalidate",
+    "",
+    "/assets/*",
+    "  Cache-Control: public, max-age=31536000, immutable",
+    "",
+    "/app-assets/*",
+    "  Cache-Control: public, max-age=31536000, immutable",
+    "",
+  ].join("\n"),
+);
 
 const assets = await collectAssets(publicDir);
 await rewriteServerAssetUrls(join(serverDir, "index.js"));
