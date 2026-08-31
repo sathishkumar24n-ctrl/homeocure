@@ -360,7 +360,7 @@ function DoctorDashboard() {
   const metricCards = [
     {
       icon: CalendarCheck,
-      label: "Appointments Today",
+      label: "Today",
       value: todayAppointmentsCount.isLoading ? "—" : appointmentsTodayValue,
       meta: todayAppointmentsCount.isLoading
         ? "Loading schedule"
@@ -371,7 +371,7 @@ function DoctorDashboard() {
     },
     {
       icon: Users,
-      label: "Waiting Now",
+      label: "Attention",
       value: waitingNowValue ?? "—",
       meta: attentionLoading
         ? "Checking queue"
@@ -382,7 +382,7 @@ function DoctorDashboard() {
     },
     {
       icon: HeartPulse,
-      label: "Follow-ups Due",
+      label: "Follow-ups",
       value: followUpsDueValue ?? "—",
       meta: attentionLoading
         ? "Checking follow-ups"
@@ -402,7 +402,7 @@ function DoctorDashboard() {
     },
     {
       icon: ReceiptText,
-      label: "Outstanding",
+      label: "Dues",
       value: `₹${outstandingValue.toLocaleString("en-IN")}`,
       meta: outstandingValue > 0 ? "Unpaid balance" : "No unpaid bills",
       tone: "red",
@@ -491,25 +491,25 @@ function DoctorDashboard() {
         <main className="min-w-0 border-l border-border/70 bg-background/80">
           <DashboardTopbar doctorName={user?.user_metadata?.full_name} />
 
-          <div className="space-y-4 px-4 py-4 sm:px-6 lg:px-6">
+          <div className="space-y-3 px-3 py-3 sm:space-y-4 sm:px-6 sm:py-4 lg:px-6">
             <section>
               <div className="max-w-3xl">
-                <h1 className="text-2xl font-bold tracking-tight sm:text-3xl">
+                <h1 className="text-xl font-bold tracking-tight sm:text-2xl">
                   {greeting()}, Dr. {user?.user_metadata?.full_name ?? "Doctor"}
                 </h1>
-                <p className="mt-2 text-sm text-muted-foreground">
+                <p className="mt-1 text-xs text-muted-foreground sm:text-sm">
                   Here&apos;s your clinic overview for today.
                 </p>
               </div>
             </section>
 
-            <section className="grid gap-4 md:grid-cols-3">
+            <section className="grid grid-cols-3 gap-2 sm:gap-4">
               {quickActions.map((action) => (
                 <QuickActionCard key={action.title} {...action} />
               ))}
             </section>
 
-            <section className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-[repeat(5,minmax(0,1fr))]">
+            <section className="-mx-3 flex gap-2 overflow-x-auto px-3 pb-1 sm:mx-0 sm:grid sm:grid-cols-2 sm:gap-4 sm:px-0 sm:pb-0 lg:grid-cols-3 xl:grid-cols-[repeat(5,minmax(0,1fr))]">
               {metricCards.map((metric) => (
                 <MetricCard key={metric.label} {...metric} />
               ))}
@@ -523,7 +523,14 @@ function DoctorDashboard() {
               />
             )}
 
-            <section className="grid gap-5 xl:grid-cols-[1.05fr_1.2fr]">
+            <section className="grid gap-4 xl:grid-cols-[1.35fr_0.9fr]">
+              <AttentionQueue
+                loading={attentionLoading}
+                items={attentionItems}
+                summary={attentionSummary}
+                updatingAppointmentId={setAppointmentStatus.variables?.id}
+                onSetAppointmentStatus={(id, status) => setAppointmentStatus.mutate({ id, status })}
+              />
               <AppointmentPanel
                 title="Today's Schedule"
                 loading={todayAppointments.isLoading}
@@ -531,13 +538,6 @@ function DoctorDashboard() {
                 empty="No appointments today."
                 showVisitAction
                 compact
-              />
-              <AttentionQueue
-                loading={attentionLoading}
-                items={attentionItems}
-                summary={attentionSummary}
-                updatingAppointmentId={setAppointmentStatus.variables?.id}
-                onSetAppointmentStatus={(id, status) => setAppointmentStatus.mutate({ id, status })}
               />
             </section>
 
@@ -708,8 +708,8 @@ function DashboardTopbar({ doctorName }: { doctorName?: string | null }) {
   const today = new Date();
 
   return (
-    <div className="sticky top-16 z-30 border-b border-border/70 bg-background/90 px-4 py-3 backdrop-blur-md sm:px-6 lg:px-7">
-      <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+    <div className="sticky top-16 z-30 border-b border-border/70 bg-background/90 px-3 py-2 backdrop-blur-md sm:px-6 lg:px-6">
+      <div className="flex items-center justify-between gap-3">
         <div className="flex items-center gap-3">
           <button
             type="button"
@@ -718,7 +718,7 @@ function DashboardTopbar({ doctorName }: { doctorName?: string | null }) {
           >
             <Menu className="h-5 w-5" />
           </button>
-          <div className="relative w-full min-w-0 lg:w-[430px]">
+          <div className="relative hidden w-full min-w-0 md:block lg:w-[430px]">
             <Search className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
             <input
               placeholder="Search patients, appointments..."
@@ -729,8 +729,8 @@ function DashboardTopbar({ doctorName }: { doctorName?: string | null }) {
             </span>
           </div>
         </div>
-        <div className="flex items-center justify-between gap-3 text-sm text-foreground lg:justify-end">
-          <div className="inline-flex items-center gap-2 rounded-2xl bg-card px-3 py-2 font-semibold shadow-soft">
+        <div className="flex items-center justify-end gap-2 text-xs text-foreground sm:text-sm">
+          <div className="inline-flex items-center gap-1.5 rounded-2xl bg-card px-2.5 py-2 font-semibold shadow-soft sm:gap-2 sm:px-3">
             <CalendarCheck className="h-4 w-4 text-primary" />
             {today.toLocaleDateString(undefined, {
               day: "2-digit",
@@ -742,7 +742,7 @@ function DashboardTopbar({ doctorName }: { doctorName?: string | null }) {
           <div className="hidden h-9 w-9 items-center justify-center rounded-2xl bg-card text-primary shadow-soft sm:flex">
             <MessageCircle className="h-4 w-4" />
           </div>
-          <div className="flex items-center gap-2 rounded-2xl bg-card px-3 py-2 shadow-soft">
+          <div className="flex items-center gap-2 rounded-2xl bg-card px-2.5 py-2 shadow-soft sm:px-3">
             <div className="flex h-8 w-8 items-center justify-center rounded-full bg-gradient-primary text-xs font-bold text-primary-foreground">
               {initials(doctorName ?? "Doctor")}
             </div>
@@ -768,16 +768,18 @@ function QuickActionCard({
   return (
     <a
       href={to}
-      className="group flex min-h-[68px] items-center gap-3 rounded-2xl border border-border/70 bg-card px-3.5 py-3 shadow-soft transition-smooth hover:-translate-y-0.5 hover:shadow-card"
+      className="group flex min-h-[64px] flex-col items-center justify-center gap-1.5 rounded-2xl border border-border/70 bg-card px-2 py-2 text-center shadow-soft transition-smooth hover:-translate-y-0.5 hover:shadow-card sm:min-h-[68px] sm:flex-row sm:justify-start sm:gap-3 sm:px-3.5 sm:py-3 sm:text-left"
     >
-      <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary">
-        <Icon className="h-5 w-5" />
+      <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary sm:h-9 sm:w-9">
+        <Icon className="h-4 w-4 sm:h-5 sm:w-5" />
       </div>
-      <div className="min-w-0 flex-1">
+      <div className="min-w-0 sm:flex-1">
         <p className="text-sm font-bold leading-tight text-foreground">{title}</p>
-        <p className="mt-0.5 text-xs leading-tight text-muted-foreground">{detail}</p>
+        <p className="mt-0.5 hidden text-xs leading-tight text-muted-foreground sm:block">
+          {detail}
+        </p>
       </div>
-      <ChevronRight className="h-4 w-4 text-muted-foreground transition-transform group-hover:translate-x-0.5" />
+      <ChevronRight className="hidden h-4 w-4 text-muted-foreground transition-transform group-hover:translate-x-0.5 sm:block" />
     </a>
   );
 }
@@ -797,18 +799,22 @@ function MetricCard({
 }) {
   return (
     <div
-      className={`flex min-h-[110px] flex-col rounded-2xl border px-3.5 py-3 shadow-soft ${metricTone(tone)}`}
+      className={`flex min-h-[104px] w-[122px] shrink-0 flex-col rounded-2xl border px-3 py-3 shadow-soft sm:w-auto sm:px-3.5 ${metricTone(tone)}`}
     >
       <div className="flex items-center gap-2.5">
         <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-white/75 shadow-sm">
           <Icon className="h-4 w-4" />
         </div>
-        <p className="min-w-0 text-xs font-semibold leading-tight text-foreground">{label}</p>
+        <p className="min-w-0 text-[11px] font-semibold leading-tight text-foreground sm:text-xs">
+          {label}
+        </p>
       </div>
       <p className="mt-3 text-2xl font-bold leading-none tracking-normal text-foreground">
         {value}
       </p>
-      <p className="mt-auto pt-2 text-xs font-medium leading-snug text-muted-foreground">{meta}</p>
+      <p className="mt-auto pt-2 text-[11px] font-medium leading-snug text-muted-foreground sm:text-xs">
+        {meta}
+      </p>
     </div>
   );
 }
@@ -1026,17 +1032,15 @@ function AttentionQueue({
   onSetAppointmentStatus: (id: string, status: AppointmentStatus) => void;
 }) {
   return (
-    <section className="rounded-3xl border border-border/60 bg-card p-5 shadow-card sm:p-5">
+    <section className="rounded-3xl border border-primary/15 bg-card p-4 shadow-card sm:p-5">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div>
           <p className="text-xs font-semibold uppercase tracking-wide text-primary">
-            Daily command center
+            Priority work
           </p>
-          <h2 className="mt-1 text-xl font-bold tracking-tight">
-            Patients requiring attention today
-          </h2>
-          <p className="mt-1 max-w-2xl text-sm text-muted-foreground">
-            Follow-ups, appointments, missed visits, and appointments that still need closure.
+          <h2 className="mt-1 text-lg font-bold tracking-tight sm:text-xl">Today&apos;s Queue</h2>
+          <p className="mt-1 max-w-2xl text-xs text-muted-foreground sm:text-sm">
+            Appointments, follow-ups, missed visits, and work needing closure.
           </p>
         </div>
         <div className="rounded-full bg-secondary px-3 py-1 text-xs font-semibold text-secondary-foreground">
@@ -1044,7 +1048,7 @@ function AttentionQueue({
         </div>
       </div>
 
-      <div className="mt-4 grid gap-2 sm:grid-cols-2 lg:grid-cols-5">
+      <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-5">
         <AttentionSummaryPill label="Today visits" value={summary.appointmentsToday} />
         <AttentionSummaryPill label="Due follow-ups" value={summary.dueFollowUps} />
         <AttentionSummaryPill label="Overdue follow-ups" value={summary.overdueFollowUps} urgent />
@@ -1053,19 +1057,19 @@ function AttentionQueue({
       </div>
 
       {loading ? (
-        <div className="mt-4 rounded-2xl border border-border/60 bg-background p-6 text-center text-sm text-muted-foreground">
+        <div className="mt-3 rounded-2xl border border-border/60 bg-background p-5 text-center text-sm text-muted-foreground">
           Loading today&apos;s attention queue...
         </div>
       ) : items.length === 0 ? (
-        <div className="mt-4 rounded-2xl border border-dashed border-border bg-background/60 p-8 text-center">
-          <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-2xl bg-secondary text-secondary-foreground">
-            <CheckCircle2 className="h-6 w-6" />
+        <div className="mt-3 rounded-2xl border border-dashed border-border bg-background/60 p-6 text-center">
+          <div className="mx-auto flex h-10 w-10 items-center justify-center rounded-2xl bg-secondary text-secondary-foreground">
+            <CheckCircle2 className="h-5 w-5" />
           </div>
           <p className="mt-3 text-sm font-semibold text-foreground">No pending patient actions</p>
           <p className="mt-1 text-xs text-muted-foreground">Today&apos;s clinic queue is clear.</p>
         </div>
       ) : (
-        <div className="mt-4 space-y-2">
+        <div className="mt-3 space-y-2">
           {items.map((item) => (
             <AttentionQueueCard
               key={item.id}
