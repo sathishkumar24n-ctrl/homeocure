@@ -41,46 +41,48 @@
   --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
   --color-sidebar-border: var(--sidebar-border);
   --color-sidebar-ring: var(--sidebar-ring);
-  --font-sans: "Plus Jakarta Sans", "Inter", system-ui, sans-serif;
+  --font-sans: "DM Sans", "Inter", system-ui, sans-serif;
+  --font-display: "DM Serif Display", Georgia, serif;
+  --font-mono: "JetBrains Mono", "SFMono-Regular", Consolas, monospace;
 }
 
 :root {
-  --radius: 0.875rem;
+  --radius: 0.625rem;
 
   /* Calm, healing palette */
-  --background: oklch(0.99 0.005 160);
-  --foreground: oklch(0.22 0.03 220);
+  --background: #f7f8fa;
+  --foreground: #0f1923;
 
-  --card: oklch(1 0 0);
-  --card-foreground: oklch(0.22 0.03 220);
+  --card: #ffffff;
+  --card-foreground: #0f1923;
 
   --popover: oklch(1 0 0);
   --popover-foreground: oklch(0.22 0.03 220);
 
   /* Healing green */
-  --primary: oklch(0.68 0.13 165);
-  --primary-foreground: oklch(0.99 0.005 160);
-  --primary-glow: oklch(0.78 0.12 170);
+  --primary: #0d9488;
+  --primary-foreground: #ffffff;
+  --primary-glow: #14b8a6;
 
   /* Soft teal */
-  --secondary: oklch(0.95 0.025 195);
-  --secondary-foreground: oklch(0.32 0.06 200);
+  --secondary: #ccfbf1;
+  --secondary-foreground: #0f766e;
 
-  --muted: oklch(0.96 0.01 180);
-  --muted-foreground: oklch(0.5 0.02 220);
+  --muted: #f7f8fa;
+  --muted-foreground: #5a6473;
 
   --accent: oklch(0.92 0.05 200);
   --accent-foreground: oklch(0.3 0.08 210);
 
-  --destructive: oklch(0.62 0.18 25);
-  --destructive-foreground: oklch(0.99 0.005 160);
+  --destructive: #f43f5e;
+  --destructive-foreground: #ffffff;
 
   --success: oklch(0.7 0.14 160);
   --success-foreground: oklch(0.99 0.005 160);
 
-  --border: oklch(0.92 0.015 180);
-  --input: oklch(0.94 0.012 180);
-  --ring: oklch(0.68 0.13 165);
+  --border: #e5e9ef;
+  --input: #e5e9ef;
+  --ring: #0d9488;
 
   --sidebar: oklch(0.98 0.01 170);
   --sidebar-foreground: oklch(0.22 0.03 220);
@@ -94,11 +96,15 @@
   /* Gradients & shadows */
   --gradient-primary: linear-gradient(135deg, var(--primary), var(--primary-glow));
   --gradient-soft: linear-gradient(160deg, oklch(0.97 0.02 170), oklch(0.95 0.03 200));
-  --gradient-hero: radial-gradient(ellipse at top, oklch(0.93 0.05 175) 0%, oklch(0.99 0.005 160) 60%);
+  --gradient-hero: radial-gradient(
+    ellipse at top,
+    oklch(0.93 0.05 175) 0%,
+    oklch(0.99 0.005 160) 60%
+  );
 
-  --shadow-soft: 0 4px 16px -4px color-mix(in oklab, var(--primary) 18%, transparent);
-  --shadow-elevated: 0 12px 40px -12px color-mix(in oklab, var(--primary) 28%, transparent);
-  --shadow-card: 0 2px 12px -2px oklch(0.7 0.02 220 / 0.08);
+  --shadow-soft: 0 4px 12px rgba(0, 0, 0, 0.06);
+  --shadow-elevated: 0 12px 32px rgba(15, 25, 35, 0.12);
+  --shadow-card: 0 1px 3px rgba(15, 25, 35, 0.04);
 
   --transition-smooth: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }

@@ -76,15 +76,35 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       { name: "viewport", content: "width=device-width, initial-scale=1, viewport-fit=cover" },
       { name: "theme-color", content: "#3DBE9A" },
       { title: "HomeoCare — Homeopathy Clinic Management" },
-      { name: "description", content: "All-in-one app for small homeopathy clinics: patients, history, appointments via WhatsApp, inventory, and follow-ups." },
+      {
+        name: "description",
+        content:
+          "All-in-one app for small homeopathy clinics: patients, history, appointments via WhatsApp, inventory, and follow-ups.",
+      },
       { property: "og:title", content: "HomeoCare — Homeopathy Clinic Management" },
-      { property: "og:description", content: "All-in-one app for small homeopathy clinics: patients, history, appointments via WhatsApp, inventory, and follow-ups." },
+      {
+        property: "og:description",
+        content:
+          "All-in-one app for small homeopathy clinics: patients, history, appointments via WhatsApp, inventory, and follow-ups.",
+      },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary" },
       { name: "twitter:title", content: "HomeoCare — Homeopathy Clinic Management" },
-      { name: "twitter:description", content: "All-in-one app for small homeopathy clinics: patients, history, appointments via WhatsApp, inventory, and follow-ups." },
-      { property: "og:image", content: "https://storage.googleapis.com/gpt-engineer-file-uploads/attachments/og-images/59b8437e-655d-47ec-8ec1-59598a689a9d" },
-      { name: "twitter:image", content: "https://storage.googleapis.com/gpt-engineer-file-uploads/attachments/og-images/59b8437e-655d-47ec-8ec1-59598a689a9d" },
+      {
+        name: "twitter:description",
+        content:
+          "All-in-one app for small homeopathy clinics: patients, history, appointments via WhatsApp, inventory, and follow-ups.",
+      },
+      {
+        property: "og:image",
+        content:
+          "https://storage.googleapis.com/gpt-engineer-file-uploads/attachments/og-images/59b8437e-655d-47ec-8ec1-59598a689a9d",
+      },
+      {
+        name: "twitter:image",
+        content:
+          "https://storage.googleapis.com/gpt-engineer-file-uploads/attachments/og-images/59b8437e-655d-47ec-8ec1-59598a689a9d",
+      },
     ],
     links: [
       { rel: "stylesheet", href: appCss },
@@ -93,7 +113,10 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       { rel: "apple-touch-icon", href: "/icon-512.png" },
       { rel: "preconnect", href: "https://fonts.googleapis.com" },
       { rel: "preconnect", href: "https://fonts.gstatic.com", crossOrigin: "anonymous" },
-      { rel: "stylesheet", href: "https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" },
+      {
+        rel: "stylesheet",
+        href: "https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,300;9..40,400;9..40,500;9..40,600;9..40,700&family=DM+Serif+Display&family=JetBrains+Mono:wght@400;500&display=swap",
+      },
     ],
   }),
   shellComponent: RootShell,
