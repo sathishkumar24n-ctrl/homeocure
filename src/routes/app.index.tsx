@@ -779,16 +779,15 @@ function DashboardSidebar({
         width: "240px",
         height: "100%",
         background: "#0F1923",
-        overflowY: "auto",
-        scrollbarWidth: "none",
+        overflow: "hidden",
       }}
     >
       <div
-        className="flex items-center gap-3 border-b border-[#1c2b38] px-5 py-6 text-white"
+        className="flex items-center gap-3 border-b border-[#1c2b38] px-4 py-4 text-white"
         style={{ flexShrink: 0 }}
       >
-        <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-[#0d9488] text-white">
-          <HeartPulse className="h-5 w-5" />
+        <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-[#0d9488] text-white">
+          <HeartPulse className="h-4 w-4" />
         </div>
         <div>
           <p className="text-sm font-semibold leading-tight text-white">HomeoCare</p>
@@ -801,21 +800,20 @@ function DashboardSidebar({
         style={{
           flex: "0 0 auto",
           overflowY: "visible",
-          scrollbarWidth: "none",
-          padding: "20px 12px",
+          padding: "12px 10px 6px",
           display: "flex",
           flexDirection: "column",
-          gap: "2px",
+          gap: "1px",
         }}
       >
-        <p className="mb-2 px-2 text-[11px] font-medium uppercase tracking-widest text-[#475569]">
+        <p className="mb-1 px-2 text-[10px] font-medium uppercase tracking-widest text-[#475569]">
           Clinical
         </p>
         {nav.map((item) =>
           "section" in item ? (
             <p
               key={item.label}
-              className="mb-2 mt-6 px-2 text-[11px] font-medium uppercase tracking-widest text-[#475569]"
+              className="mb-1 mt-3 px-2 text-[10px] font-medium uppercase tracking-widest text-[#475569]"
             >
               {item.label}
             </p>
@@ -823,13 +821,13 @@ function DashboardSidebar({
             <Link
               key={item.label}
               to={item.href}
-              className={`group mb-0.5 flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-smooth ${
+              className={`group mb-0.5 flex items-center gap-3 rounded-lg px-3 py-2 text-[13px] font-medium transition-smooth ${
                 item.active
                   ? "bg-[#1a3a4a] text-[#2dd4bf]"
                   : "text-[#94a3b8] hover:bg-[#1c2b38] hover:text-[#cbd5e1]"
               }`}
             >
-              <item.icon className="h-[18px] w-[18px]" />
+              <item.icon className="h-4 w-4" />
               <span className="flex-1">{item.label}</span>
               {item.active && <span className="h-1.5 w-1.5 rounded-full bg-[#2dd4bf]" />}
             </Link>
@@ -837,27 +835,27 @@ function DashboardSidebar({
         )}
       </nav>
 
-      <div style={{ padding: "0 12px 4px", flexShrink: 0 }}>
+      <div style={{ padding: "0 10px 2px", flexShrink: 0 }}>
         <Link
           to="/app/clinic"
-          className="flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-[#94a3b8] transition-smooth hover:bg-[#1c2b38] hover:text-[#cbd5e1]"
+          className="flex items-center gap-3 rounded-lg px-3 py-2 text-[13px] font-medium text-[#94a3b8] transition-smooth hover:bg-[#1c2b38] hover:text-[#cbd5e1]"
         >
-          <Settings className="h-[18px] w-[18px]" />
+          <Settings className="h-4 w-4" />
           Settings
         </Link>
         <Link
           to="/app/whatsapp-status"
-          className="flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-[#94a3b8] transition-smooth hover:bg-[#1c2b38] hover:text-[#cbd5e1]"
+          className="flex items-center gap-3 rounded-lg px-3 py-2 text-[13px] font-medium text-[#94a3b8] transition-smooth hover:bg-[#1c2b38] hover:text-[#cbd5e1]"
         >
-          <HelpCircle className="h-[18px] w-[18px]" />
+          <HelpCircle className="h-4 w-4" />
           Help & Support
         </Link>
       </div>
 
-      <div style={{ padding: "16px", borderTop: "1px solid #1C2B38", flexShrink: 0 }}>
-        <div className="rounded-xl border border-[#1c2b38] bg-white/[0.03] p-3">
+      <div style={{ padding: "10px", borderTop: "1px solid #1C2B38", flexShrink: 0 }}>
+        <div className="rounded-xl border border-[#1c2b38] bg-white/[0.03] p-2">
           <div className="flex items-center gap-3">
-            <div className="flex h-9 w-9 items-center justify-center rounded-full bg-[#0d9488] text-sm font-bold text-white">
+            <div className="flex h-8 w-8 items-center justify-center rounded-full bg-[#0d9488] text-xs font-bold text-white">
               {initials(doctorName ?? "Doctor")}
             </div>
             <div className="min-w-0 flex-1">
@@ -872,7 +870,7 @@ function DashboardSidebar({
           <button
             type="button"
             onClick={onSignOut}
-            className="mt-3 flex w-full items-center justify-center gap-2 rounded-lg border border-[#1c2b38] px-3 py-2 text-xs font-semibold text-[#cbd5e1] transition-smooth hover:bg-[#1c2b38] hover:text-white"
+            className="mt-2 flex w-full items-center justify-center gap-2 rounded-lg border border-[#1c2b38] px-3 py-1.5 text-xs font-semibold text-[#cbd5e1] transition-smooth hover:bg-[#1c2b38] hover:text-white"
           >
             <LogOut className="h-3.5 w-3.5" />
             Sign out
