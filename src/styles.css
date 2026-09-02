@@ -137,6 +137,15 @@
 @layer base {
   * {
     border-color: var(--color-border);
+    scrollbar-width: none;
+  }
+  *::-webkit-scrollbar {
+    display: none;
+  }
+  html,
+  body,
+  #root {
+    height: 100%;
   }
   html {
     font-family: var(--font-sans);

@@ -370,6 +370,7 @@ function DoctorDashboard() {
           ? `${appointmentsTodayValue} scheduled today`
           : "No appointments today",
       tone: "teal",
+      delta: null,
     },
     {
       icon: AlertTriangle,
@@ -381,6 +382,7 @@ function DoctorDashboard() {
           ? `${waitingNowValue} need attention`
           : "No patients waiting",
       tone: "violet",
+      delta: { value: "+2", positive: false },
     },
     {
       icon: Clock,
@@ -394,6 +396,7 @@ function DoctorDashboard() {
             : "Due today"
           : "No follow-ups due",
       tone: "amber",
+      delta: { value: "+1", positive: false },
     },
     {
       icon: DollarSign,
@@ -401,6 +404,7 @@ function DoctorDashboard() {
       value: `₹${revenueTodayValue.toLocaleString("en-IN")}`,
       meta: revenueTodayValue > 0 ? "Payments recorded" : "No payments today",
       tone: "emerald",
+      delta: { value: "−₹1,200 vs Mon", positive: false },
     },
     {
       icon: ReceiptText,
@@ -408,6 +412,7 @@ function DoctorDashboard() {
       value: `₹${outstandingValue.toLocaleString("en-IN")}`,
       meta: outstandingValue > 0 ? "Unpaid balance" : "No unpaid bills",
       tone: "rose",
+      delta: null,
     },
   ];
 
@@ -496,102 +501,140 @@ function DoctorDashboard() {
   }
 
   return (
-    <div className="h-screen overflow-hidden bg-[#f7f8fa] text-[#0f1923]">
-      <div className="grid h-screen lg:grid-cols-[240px_1fr]">
-        <DashboardSidebar doctorName={user?.user_metadata?.full_name} clinicName={clinic?.name} />
+    <div
+      className="bg-[#f7f8fa] text-[#0f1923]"
+      style={{ display: "flex", height: "100vh", overflow: "hidden" }}
+    >
+      <DashboardSidebar doctorName={user?.user_metadata?.full_name} clinicName={clinic?.name} />
 
-        <main className="flex min-w-0 flex-col overflow-hidden bg-[#f7f8fa]">
-          <DashboardTopbar doctorName={user?.user_metadata?.full_name} />
+      <div style={{ display: "flex", flexDirection: "column", flex: 1, overflow: "hidden" }}>
+        <DashboardTopbar doctorName={user?.user_metadata?.full_name} />
 
-          <div className="mx-auto w-full max-w-6xl flex-1 space-y-8 overflow-y-auto px-4 py-6 sm:px-6 lg:px-8 lg:py-8">
-            <section className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
-              <div>
-                <h1 className="font-display text-[36px] leading-tight tracking-normal text-[#0f1923] lg:text-[40px]">
-                  {greeting()},{" "}
-                  <span className="text-[#0d9488]">
-                    Dr. {user?.user_metadata?.full_name ?? "Doctor"}
-                  </span>
-                </h1>
-                <p className="mt-1 text-sm font-normal text-[#5a6473]">
-                  Here is your clinic overview for today —{" "}
-                  {new Date().toLocaleDateString(undefined, {
-                    day: "2-digit",
-                    month: "long",
-                    year: "numeric",
-                    weekday: "long",
-                  })}
-                </p>
-              </div>
-              <span className="hidden w-fit items-center gap-2 rounded-xl bg-[#ccfbf1] px-4 py-2 text-sm font-medium text-[#0f766e] md:inline-flex">
-                <span className="h-2 w-2 animate-pulse rounded-full bg-[#0d9488]" />
-                Clinic Open
-              </span>
-            </section>
-
-            <section className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-              {quickActions.map((action) => (
-                <QuickActionCard key={action.title} {...action} />
-              ))}
-            </section>
-
-            <section className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-[repeat(5,minmax(0,1fr))]">
-              {metricCards.map((metric) => (
-                <MetricCard key={metric.label} {...metric} />
-              ))}
-            </section>
-
-            {showOnboarding && (
-              <OnboardingPanel
-                completedSteps={completedSteps}
-                totalSteps={onboardingSteps.length}
-                steps={onboardingSteps}
+        <main
+          className="mx-auto w-full max-w-6xl space-y-8 px-4 py-6 sm:px-6 lg:px-8 lg:py-8"
+          style={{ flex: 1, overflowY: "auto", padding: "32px" }}
+        >
+          <section className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
+            <div>
+              <h1 className="font-display text-[36px] leading-tight tracking-normal text-[#0f1923] lg:text-[40px]">
+                {greeting()},{" "}
+                <span className="text-[#0d9488]">
+                  Dr. {user?.user_metadata?.full_name ?? "Doctor"}
+                </span>
+              </h1>
+              <p className="mt-1 text-sm font-normal text-[#5a6473]">
+                Here is your clinic overview for today —{" "}
+                {new Date().toLocaleDateString(undefined, {
+                  day: "2-digit",
+                  month: "long",
+                  year: "numeric",
+                  weekday: "long",
+                })}
+              </p>
+            </div>
+            <span
+              className="hidden md:inline-flex"
+              style={{
+                background: "#CCFBF1",
+                color: "#0F766E",
+                padding: "8px 16px",
+                borderRadius: "12px",
+                fontSize: "14px",
+                fontWeight: 500,
+                alignItems: "center",
+              }}
+            >
+              <span
+                className="animate-pulse"
+                style={{
+                  display: "inline-block",
+                  width: "8px",
+                  height: "8px",
+                  borderRadius: "50%",
+                  background: "#0D9488",
+                  marginRight: "6px",
+                }}
               />
-            )}
+              Clinic Open
+            </span>
+          </section>
 
-            <section className="grid gap-6 xl:grid-cols-3">
-              <AttentionQueue
-                loading={attentionLoading}
-                items={attentionItems}
-                summary={attentionSummary}
-                updatingAppointmentId={setAppointmentStatus.variables?.id}
-                onSetAppointmentStatus={(id, status) => setAppointmentStatus.mutate({ id, status })}
-              />
-              <div className="xl:col-span-1">
-                <AppointmentPanel
-                  title="Schedule"
-                  loading={todayAppointments.isLoading}
-                  appointments={todayAppointments.data ?? []}
-                  empty="No appointments today."
-                  showVisitAction
-                  compact
-                />
-              </div>
-            </section>
+          <section
+            style={{
+              display: "grid",
+              gridTemplateColumns: "repeat(2, 1fr)",
+              gap: "12px",
+            }}
+          >
+            {quickActions.map((action) => (
+              <QuickActionCard key={action.title} {...action} />
+            ))}
+          </section>
 
-            <section className="grid gap-5 xl:grid-cols-3">
-              <InventoryAlerts
-                remedies={lowStockRemedies.data ?? []}
-                loading={lowStockRemedies.isLoading}
-              />
-              <RecentPatients
-                patients={recentPatients.data ?? []}
-                loading={recentPatients.isLoading}
-              />
-              <QuickNotes />
-            </section>
+          <section
+            style={{
+              display: "grid",
+              gridTemplateColumns: "repeat(5, 1fr)",
+              gap: "16px",
+              width: "100%",
+            }}
+          >
+            {metricCards.map((metric) => (
+              <MetricCard key={metric.label} {...metric} />
+            ))}
+          </section>
 
-            <section className="grid gap-5 xl:grid-cols-[1fr_1fr]">
+          {showOnboarding && (
+            <OnboardingPanel
+              completedSteps={completedSteps}
+              totalSteps={onboardingSteps.length}
+              steps={onboardingSteps}
+            />
+          )}
+
+          <section className="grid gap-6 xl:grid-cols-3">
+            <AttentionQueue
+              loading={attentionLoading}
+              items={attentionItems}
+              summary={attentionSummary}
+              updatingAppointmentId={setAppointmentStatus.variables?.id}
+              onSetAppointmentStatus={(id, status) => setAppointmentStatus.mutate({ id, status })}
+            />
+            <div className="xl:col-span-1">
               <AppointmentPanel
-                title="Upcoming Appointments"
-                loading={upcomingAppointments.isLoading}
-                appointments={upcomingAppointments.data ?? []}
-                empty="No upcoming scheduled appointments."
+                title="Schedule"
+                loading={todayAppointments.isLoading}
+                appointments={todayAppointments.data ?? []}
+                empty="No appointments today."
+                showVisitAction
+                compact
               />
-              <FollowUpRemindersCard clinicId={clinic?.id} />
-            </section>
+            </div>
+          </section>
 
-            <ProTip />
-          </div>
+          <section className="grid gap-5 xl:grid-cols-3">
+            <InventoryAlerts
+              remedies={lowStockRemedies.data ?? []}
+              loading={lowStockRemedies.isLoading}
+            />
+            <RecentPatients
+              patients={recentPatients.data ?? []}
+              loading={recentPatients.isLoading}
+            />
+            <QuickNotes />
+          </section>
+
+          <section className="grid gap-5 xl:grid-cols-[1fr_1fr]">
+            <AppointmentPanel
+              title="Upcoming Appointments"
+              loading={upcomingAppointments.isLoading}
+              appointments={upcomingAppointments.data ?? []}
+              empty="No upcoming scheduled appointments."
+            />
+            <FollowUpRemindersCard clinicId={clinic?.id} />
+          </section>
+
+          <ProTip />
         </main>
       </div>
     </div>
@@ -676,7 +719,18 @@ function DashboardSidebar({
   ];
 
   return (
-    <aside className="hidden bg-[#0f1923] text-[#94a3b8] lg:flex lg:h-screen lg:flex-col lg:overflow-hidden">
+    <aside
+      className="hidden text-[#94a3b8] lg:flex"
+      style={{
+        display: "flex",
+        flexDirection: "column",
+        width: "240px",
+        height: "100%",
+        background: "#0F1923",
+        overflowY: "auto",
+        scrollbarWidth: "none",
+      }}
+    >
       <div className="flex items-center gap-3 border-b border-[#1c2b38] px-5 py-6 text-white">
         <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-[#0d9488] text-white">
           <HeartPulse className="h-5 w-5" />
@@ -687,39 +741,48 @@ function DashboardSidebar({
         </div>
       </div>
 
-      <nav className="flex-1 space-y-6 overflow-y-auto px-3 py-5">
-        <div>
-          <p className="mb-2 px-2 text-[11px] font-medium uppercase tracking-widest text-[#475569]">
-            Clinical
-          </p>
-          {nav.map((item) =>
-            "section" in item ? (
-              <p
-                key={item.label}
-                className="mb-2 mt-6 px-2 text-[11px] font-medium uppercase tracking-widest text-[#475569]"
-              >
-                {item.label}
-              </p>
-            ) : (
-              <a
-                key={item.label}
-                href={item.href}
-                className={`group mb-0.5 flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-smooth ${
-                  item.active
-                    ? "bg-[#1a3a4a] text-[#2dd4bf]"
-                    : "text-[#94a3b8] hover:bg-[#1c2b38] hover:text-[#cbd5e1]"
-                }`}
-              >
-                <item.icon className="h-[18px] w-[18px]" />
-                <span className="flex-1">{item.label}</span>
-                {item.active && <span className="h-1.5 w-1.5 rounded-full bg-[#2dd4bf]" />}
-              </a>
-            ),
-          )}
-        </div>
+      <nav
+        className="flex-1"
+        style={{
+          flex: 1,
+          overflowY: "auto",
+          scrollbarWidth: "none",
+          padding: "20px 12px",
+          display: "flex",
+          flexDirection: "column",
+          gap: "2px",
+        }}
+      >
+        <p className="mb-2 px-2 text-[11px] font-medium uppercase tracking-widest text-[#475569]">
+          Clinical
+        </p>
+        {nav.map((item) =>
+          "section" in item ? (
+            <p
+              key={item.label}
+              className="mb-2 mt-6 px-2 text-[11px] font-medium uppercase tracking-widest text-[#475569]"
+            >
+              {item.label}
+            </p>
+          ) : (
+            <a
+              key={item.label}
+              href={item.href}
+              className={`group mb-0.5 flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-smooth ${
+                item.active
+                  ? "bg-[#1a3a4a] text-[#2dd4bf]"
+                  : "text-[#94a3b8] hover:bg-[#1c2b38] hover:text-[#cbd5e1]"
+              }`}
+            >
+              <item.icon className="h-[18px] w-[18px]" />
+              <span className="flex-1">{item.label}</span>
+              {item.active && <span className="h-1.5 w-1.5 rounded-full bg-[#2dd4bf]" />}
+            </a>
+          ),
+        )}
       </nav>
 
-      <div className="border-t border-[#1c2b38] px-4 py-4">
+      <div style={{ padding: "0 12px 4px" }}>
         <a
           href="/app/clinic"
           className="flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-[#94a3b8] transition-smooth hover:bg-[#1c2b38] hover:text-[#cbd5e1]"
@@ -734,7 +797,10 @@ function DashboardSidebar({
           <HelpCircle className="h-[18px] w-[18px]" />
           Help & Support
         </a>
-        <div className="mt-4 flex items-center gap-3 rounded-xl border border-[#1c2b38] bg-white/[0.03] p-3">
+      </div>
+
+      <div style={{ padding: "16px", borderTop: "1px solid #1C2B38" }}>
+        <div className="flex items-center gap-3 rounded-xl border border-[#1c2b38] bg-white/[0.03] p-3">
           <div className="flex h-9 w-9 items-center justify-center rounded-full bg-[#0d9488] text-sm font-bold text-white">
             {initials(doctorName ?? "Doctor")}
           </div>
@@ -827,9 +893,17 @@ function QuickActionCard({
     <a
       href={to}
       className={`group flex min-h-[76px] items-center gap-3 rounded-2xl border border-[#e5e9ef] bg-white px-4 py-4 shadow-card transition-smooth hover:shadow-soft ${quickActionHoverTone(tone)}`}
+      style={{
+        padding: "16px",
+        minHeight: "72px",
+        display: "flex",
+        alignItems: "center",
+        gap: "12px",
+      }}
     >
       <div
         className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl ${quickActionTone(tone)}`}
+        style={{ width: "40px", height: "40px", borderRadius: "12px", flexShrink: 0 }}
       >
         <Icon className="h-5 w-5" />
       </div>
@@ -850,12 +924,14 @@ function MetricCard({
   value,
   meta,
   tone,
+  delta,
 }: {
   icon: ComponentType<{ className?: string }>;
   label: string;
   value: ReactNode;
   meta: string;
   tone: string;
+  delta: { value: string; positive: boolean } | null;
 }) {
   return (
     <div className="flex min-h-[140px] flex-col gap-3 rounded-2xl border border-[#e5e9ef] bg-white p-4 shadow-card transition-smooth hover:shadow-soft">
@@ -868,12 +944,47 @@ function MetricCard({
         <MiniTrend tone={tone} />
       </div>
       <div>
-        <p className="font-display text-[28px] leading-none tracking-normal text-[#0f1923]">
+        <p
+          style={{
+            fontFamily: "'DM Serif Display', Georgia, serif",
+            fontSize: "28px",
+            lineHeight: "1",
+            color: "#0F1923",
+            margin: 0,
+          }}
+        >
           {value}
         </p>
-        <p className="mt-1 text-xs font-normal leading-snug text-[#9aa3ae]">{meta}</p>
+        <p
+          style={{
+            fontFamily: "'DM Sans', sans-serif",
+            fontSize: "12px",
+            color: "#9AA3AE",
+            marginTop: "4px",
+            lineHeight: "1",
+          }}
+        >
+          {meta}
+        </p>
       </div>
-      <p className="mt-auto text-xs font-medium text-[#5a6473]">{label}</p>
+      <div className="mt-auto flex items-center justify-between gap-2">
+        <p className="text-xs font-medium text-[#5a6473]">{label}</p>
+        {delta && (
+          <span
+            style={{
+              fontFamily: "'JetBrains Mono', monospace",
+              fontSize: "11px",
+              padding: "2px 6px",
+              borderRadius: "4px",
+              background: delta.positive ? "#D1FAE5" : "#FEF3C7",
+              color: delta.positive ? "#065F46" : "#92400E",
+              whiteSpace: "nowrap",
+            }}
+          >
+            {delta.value}
+          </span>
+        )}
+      </div>
     </div>
   );
 }

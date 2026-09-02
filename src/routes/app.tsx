@@ -37,7 +37,10 @@ function AppLayout() {
   if (!user) return null;
 
   return (
-    <div className="flex min-h-screen flex-col bg-background">
+    <div
+      className="bg-background"
+      style={{ display: "flex", height: "100vh", overflow: "hidden", flexDirection: "column" }}
+    >
       {!isDashboard && (
         <header className="sticky top-0 z-30 border-b border-border/60 bg-card/80 backdrop-blur">
           <div className="mx-auto flex h-16 max-w-5xl items-center justify-between px-4">
@@ -75,7 +78,7 @@ function AppLayout() {
           </div>
         </header>
       )}
-      <main className="flex-1">
+      <main style={{ flex: 1, overflowY: "auto" }}>
         <Outlet />
       </main>
     </div>
