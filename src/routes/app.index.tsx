@@ -13,7 +13,6 @@ import {
   CheckCircle2,
   ChevronRight,
   Clock,
-  DollarSign,
   FileText,
   HelpCircle,
   HeartPulse,
@@ -108,6 +107,46 @@ type AttentionSummary = {
   missedAppointments: number;
   needsClosure: number;
 };
+
+function RefreshArrowsIcon({ className }: { className?: string }) {
+  return (
+    <svg
+      className={className}
+      width="16"
+      height="16"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <polyline points="23 4 23 10 17 10" />
+      <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10" />
+    </svg>
+  );
+}
+
+function RupeeIcon({ className }: { className?: string }) {
+  return (
+    <svg
+      className={className}
+      width="16"
+      height="16"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <line x1="6" y1="3" x2="18" y2="3" />
+      <line x1="6" y1="8" x2="18" y2="8" />
+      <line x1="6" y1="13" x2="11" y2="21" />
+      <path d="M6 8h6a4 4 0 0 1 0 8H6" />
+    </svg>
+  );
+}
 
 function todayBounds() {
   const start = new Date();
@@ -385,7 +424,7 @@ function DoctorDashboard() {
       delta: { value: "+2", positive: false },
     },
     {
-      icon: Clock,
+      icon: RefreshArrowsIcon,
       label: "Follow-ups",
       value: followUpsDueValue ?? "—",
       meta: attentionLoading
@@ -399,7 +438,7 @@ function DoctorDashboard() {
       delta: { value: "+1", positive: false },
     },
     {
-      icon: DollarSign,
+      icon: RupeeIcon,
       label: "Revenue",
       value: `₹${revenueTodayValue.toLocaleString("en-IN")}`,
       meta: revenueTodayValue > 0 ? "Payments recorded" : "No payments today",
@@ -562,8 +601,9 @@ function DoctorDashboard() {
           <section
             style={{
               display: "grid",
-              gridTemplateColumns: "repeat(2, 1fr)",
+              gridTemplateColumns: "repeat(4, 1fr)",
               gap: "12px",
+              width: "100%",
             }}
           >
             {quickActions.map((action) => (
