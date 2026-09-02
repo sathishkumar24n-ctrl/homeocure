@@ -783,7 +783,10 @@ function DashboardSidebar({
         scrollbarWidth: "none",
       }}
     >
-      <div className="flex items-center gap-3 border-b border-[#1c2b38] px-5 py-6 text-white">
+      <div
+        className="flex items-center gap-3 border-b border-[#1c2b38] px-5 py-6 text-white"
+        style={{ flexShrink: 0 }}
+      >
         <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-[#0d9488] text-white">
           <HeartPulse className="h-5 w-5" />
         </div>
@@ -796,8 +799,8 @@ function DashboardSidebar({
       <nav
         className="flex-1"
         style={{
-          flex: 1,
-          overflowY: "auto",
+          flex: "0 0 auto",
+          overflowY: "visible",
           scrollbarWidth: "none",
           padding: "20px 12px",
           display: "flex",
@@ -834,7 +837,7 @@ function DashboardSidebar({
         )}
       </nav>
 
-      <div style={{ padding: "0 12px 4px" }}>
+      <div style={{ padding: "0 12px 4px", flexShrink: 0 }}>
         <Link
           to="/app/clinic"
           className="flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-[#94a3b8] transition-smooth hover:bg-[#1c2b38] hover:text-[#cbd5e1]"
@@ -851,7 +854,7 @@ function DashboardSidebar({
         </Link>
       </div>
 
-      <div style={{ padding: "16px", borderTop: "1px solid #1C2B38" }}>
+      <div style={{ padding: "16px", borderTop: "1px solid #1C2B38", flexShrink: 0 }}>
         <div className="rounded-xl border border-[#1c2b38] bg-white/[0.03] p-3">
           <div className="flex items-center gap-3">
             <div className="flex h-9 w-9 items-center justify-center rounded-full bg-[#0d9488] text-sm font-bold text-white">
