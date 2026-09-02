@@ -18,6 +18,7 @@ import {
   HeartPulse,
   Home,
   Lightbulb,
+  LogOut,
   Menu,
   MessageCircle,
   Package,
@@ -174,7 +175,7 @@ async function attachPatients(rows: Array<Omit<DashboardAppointment, "patient">>
 }
 
 function DoctorDashboard() {
-  const { user, role, loading } = useAuth();
+  const { user, role, loading, signOut } = useAuth();
   const { data: clinic, isLoading: clinicLoading } = useClinic();
   const navigate = useNavigate();
   const qc = useQueryClient();
@@ -539,15 +540,24 @@ function DoctorDashboard() {
     return <ClinicSetupCard />;
   }
 
+  const handleSignOut = async () => {
+    await signOut();
+    navigate({ to: "/login", replace: true });
+  };
+
   return (
     <div
       className="bg-[#f7f8fa] text-[#0f1923]"
       style={{ display: "flex", height: "100vh", overflow: "hidden" }}
     >
-      <DashboardSidebar doctorName={user?.user_metadata?.full_name} clinicName={clinic?.name} />
+      <DashboardSidebar
+        doctorName={user?.user_metadata?.full_name}
+        clinicName={clinic?.name}
+        onSignOut={handleSignOut}
+      />
 
       <div style={{ display: "flex", flexDirection: "column", flex: 1, overflow: "hidden" }}>
-        <DashboardTopbar doctorName={user?.user_metadata?.full_name} />
+        <DashboardTopbar doctorName={user?.user_metadata?.full_name} onSignOut={handleSignOut} />
 
         <main
           className="mx-auto w-full max-w-6xl space-y-8 px-4 py-6 sm:px-6 lg:px-8 lg:py-8"
@@ -743,9 +753,11 @@ function AppointmentPanel({
 function DashboardSidebar({
   doctorName,
   clinicName,
+  onSignOut,
 }: {
   doctorName?: string | null;
   clinicName?: string | null;
+  onSignOut: () => void;
 }) {
   const nav = [
     { icon: Home, label: "Dashboard", href: "/app", active: true },
@@ -805,9 +817,9 @@ function DashboardSidebar({
               {item.label}
             </p>
           ) : (
-            <a
+            <Link
               key={item.label}
-              href={item.href}
+              to={item.href}
               className={`group mb-0.5 flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-smooth ${
                 item.active
                   ? "bg-[#1a3a4a] text-[#2dd4bf]"
@@ -817,46 +829,64 @@ function DashboardSidebar({
               <item.icon className="h-[18px] w-[18px]" />
               <span className="flex-1">{item.label}</span>
               {item.active && <span className="h-1.5 w-1.5 rounded-full bg-[#2dd4bf]" />}
-            </a>
+            </Link>
           ),
         )}
       </nav>
 
       <div style={{ padding: "0 12px 4px" }}>
-        <a
-          href="/app/clinic"
+        <Link
+          to="/app/clinic"
           className="flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-[#94a3b8] transition-smooth hover:bg-[#1c2b38] hover:text-[#cbd5e1]"
         >
           <Settings className="h-[18px] w-[18px]" />
           Settings
-        </a>
-        <a
-          href="/app/whatsapp-status"
+        </Link>
+        <Link
+          to="/app/whatsapp-status"
           className="flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-[#94a3b8] transition-smooth hover:bg-[#1c2b38] hover:text-[#cbd5e1]"
         >
           <HelpCircle className="h-[18px] w-[18px]" />
           Help & Support
-        </a>
+        </Link>
       </div>
 
       <div style={{ padding: "16px", borderTop: "1px solid #1C2B38" }}>
-        <div className="flex items-center gap-3 rounded-xl border border-[#1c2b38] bg-white/[0.03] p-3">
-          <div className="flex h-9 w-9 items-center justify-center rounded-full bg-[#0d9488] text-sm font-bold text-white">
-            {initials(doctorName ?? "Doctor")}
+        <div className="rounded-xl border border-[#1c2b38] bg-white/[0.03] p-3">
+          <div className="flex items-center gap-3">
+            <div className="flex h-9 w-9 items-center justify-center rounded-full bg-[#0d9488] text-sm font-bold text-white">
+              {initials(doctorName ?? "Doctor")}
+            </div>
+            <div className="min-w-0 flex-1">
+              <p className="truncate text-sm font-medium text-white">
+                Dr. {doctorName ?? "Doctor"}
+              </p>
+              <p className="truncate text-xs text-[#64748b]">
+                {clinicName ?? "BHMS · General Practice"}
+              </p>
+            </div>
           </div>
-          <div className="min-w-0">
-            <p className="truncate text-sm font-medium text-white">Dr. {doctorName ?? "Doctor"}</p>
-            <p className="truncate text-xs text-[#64748b]">
-              {clinicName ?? "BHMS · General Practice"}
-            </p>
-          </div>
+          <button
+            type="button"
+            onClick={onSignOut}
+            className="mt-3 flex w-full items-center justify-center gap-2 rounded-lg border border-[#1c2b38] px-3 py-2 text-xs font-semibold text-[#cbd5e1] transition-smooth hover:bg-[#1c2b38] hover:text-white"
+          >
+            <LogOut className="h-3.5 w-3.5" />
+            Sign out
+          </button>
         </div>
       </div>
     </aside>
   );
 }
 
-function DashboardTopbar({ doctorName }: { doctorName?: string | null }) {
+function DashboardTopbar({
+  doctorName,
+  onSignOut,
+}: {
+  doctorName?: string | null;
+  onSignOut: () => void;
+}) {
   const today = new Date();
 
   return (
@@ -908,8 +938,15 @@ function DashboardTopbar({ doctorName }: { doctorName?: string | null }) {
             <span className="hidden font-medium text-[#0f1923] sm:inline">
               Dr. {doctorName ?? "Doctor"}
             </span>
-            <ChevronRight className="hidden h-4 w-4 rotate-90 text-[#9aa3ae] sm:block" />
           </div>
+          <button
+            type="button"
+            onClick={onSignOut}
+            className="inline-flex h-9 items-center justify-center gap-2 rounded-lg border border-[#e5e9ef] bg-white px-3 text-xs font-semibold text-[#5a6473] transition-smooth hover:bg-[#f7f8fa] hover:text-[#0f1923]"
+          >
+            <LogOut className="h-4 w-4" />
+            <span className="hidden xl:inline">Sign out</span>
+          </button>
         </div>
       </div>
     </div>
@@ -930,8 +967,8 @@ function QuickActionCard({
   tone: string;
 }) {
   return (
-    <a
-      href={to}
+    <Link
+      to={to}
       className={`group flex min-h-[76px] items-center gap-3 rounded-2xl border border-[#e5e9ef] bg-white px-4 py-4 shadow-card transition-smooth hover:shadow-soft ${quickActionHoverTone(tone)}`}
       style={{
         padding: "16px",
@@ -954,7 +991,7 @@ function QuickActionCard({
       <ChevronRight
         className={`h-3.5 w-3.5 shrink-0 opacity-30 transition-all group-hover:translate-x-0.5 group-hover:opacity-100 ${quickActionChevronTone(tone)}`}
       />
-    </a>
+    </Link>
   );
 }
 
